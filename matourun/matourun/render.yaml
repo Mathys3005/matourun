@@ -22,8 +22,8 @@ services:
       # Code you choose, asked once when you create your password.
       - key: SETUP_CODE
         sync: false
-      # Reads the club screenshots.
-      - key: ANTHROPIC_API_KEY
+      # Reads the club screenshots (free key from aistudio.google.com).
+      - key: GEMINI_API_KEY
         sync: false
       # Garmin Connect account the workouts are sent to.
       - key: GARMIN_EMAIL

@@ -21,6 +21,9 @@ const envSchema = z.object({
   SETUP_CODE: z.string().min(8),
   /** Public origin of the app, e.g. https://matourun.onrender.com — used for Origin checks. */
   APP_ORIGIN: z.string().url().optional(),
+  /** Free option: Google AI Studio key, used first when set. */
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default("gemini-flash-latest"),
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default("claude-sonnet-5-5"),
   GARMIN_EMAIL: z.string().optional(),

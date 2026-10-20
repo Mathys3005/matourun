@@ -9,11 +9,11 @@ Calendrier d'entraînement de course à pied, pensé pour le téléphone :
 ## Déploiement (Render + Neon, gratuit)
 
 1. **Base de données** : crée un projet gratuit sur [neon.tech](https://neon.tech) et copie la chaîne de connexion (`postgres://…?sslmode=require`). La base gratuite de Render est supprimée au bout de 30 jours, d'où Neon.
-2. **Clé Anthropic** : crée une clé sur [console.anthropic.com](https://console.anthropic.com) (lecture des captures, quelques centimes par import).
+2. **Clé Gemini (gratuite)** : sur [aistudio.google.com](https://aistudio.google.com), *Get API key* → *Create API key*. Aucune carte bancaire. Elle sert à lire les captures. Si le modèle par défaut (`gemini-flash-latest`) n'est plus disponible, renseigne `GEMINI_MODEL` avec un modèle Flash listé dans AI Studio. Alternative payante : `ANTHROPIC_API_KEY`, utilisée seulement si `GEMINI_API_KEY` est vide.
 3. **Render** : sur [dashboard.render.com](https://dashboard.render.com), *New* → *Blueprint*, choisis ce dépôt. Remplis les variables demandées :
    - `DATABASE_URL` : la chaîne Neon ;
    - `SETUP_CODE` : un code que tu inventes, demandé une seule fois à la création du mot de passe ;
-   - `ANTHROPIC_API_KEY` ;
+   - `GEMINI_API_KEY` ;
    - `GARMIN_EMAIL` / `GARMIN_PASSWORD` : ton compte Garmin Connect.
 4. Ouvre l'adresse `https://matourun-xxxx.onrender.com` sur ton téléphone, entre ton e-mail, le code de configuration et ton mot de passe. Ajoute-la à l'écran d'accueil (Partager → Sur l'écran d'accueil).
 
