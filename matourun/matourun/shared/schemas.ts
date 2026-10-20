@@ -1,0 +1,242 @@
+import { z } from "zod";
+
+/* ---------- Primitives ---------- */
+
+export const emailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .email("E-mail invalide")
+  .max(254);
+
+export const passwordSchema = z
+  .string()
+  .min(12, "12 caractères minimum")
+  .max(128, "128 caractères maximum");
+
+/** Pace in seconds per km, between 2:00 and 12:00 /km. */
+export const paceSecSchema = z.number().int().min(120).max(720);
+
+export const isoDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Date au format AAAA-MM-JJ")
+  .refine((s) => !Number.isNaN(Date.parse(s + "T00:00:00Z")), "Date invalide");
+
+export const uuidSchema = z.string().uuid();
+
+/* ---------- Auth ---------- */
+
+export const authStatusSchema = z.object({ email: emailSchema });
+
+export const loginSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1).max(128),
+});
+
+export const setupSchema = z.object({
+  email: emailSchema,
+  password: passwordSchema,
+  setupCode: z.string().trim().min(1).max(200),
+});
+
+/* ---------- Profile ---------- */
+
+export const PACE_REFS = ["5k", "10k", "hm", "m"] as const;
+export const paceRefSchema = z.enum(PACE_REFS);
+export type PaceRef = z.infer<typeof paceRefSchema>;
+
+export const profileSchema = z
+  .object({
+    pace5k: paceSecSchema,
+    pace10k: paceSecSchema,
+    paceHm: paceSecSchema,
+    paceM: paceSecSchema,
+    easyFast: paceSecSchema,
+    easySlow: paceSecSchema,
+    toleranceSec: z.number().int().min(0).max(30),
+  })
+  .refine((p) => p.easyFast <= p.easySlow, {
+    message: "L'allure footing rapide doit être plus rapide que la lente",
+    path: ["easyFast"],
+  });
+export type Profile = z.infer<typeof profileSchema>;
+
+export const DEFAULT_PROFILE: Profile = {
+  pace5k: 225,
+  pace10k: 235,
+  paceHm: 250,
+  paceM: 265,
+  easyFast: 320,
+  easySlow: 340,
+  toleranceSec: 5,
+};
+
+/* ---------- Workout structure ---------- */
+
+export const STEP_TYPES = ["warmup", "interval", "recovery", "rest", "cooldown"] as const;
+export const stepTypeSchema = z.enum(STEP_TYPES);
+
+export const endSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("time"), seconds: z.number().int().min(1).max(6 * 3600) }),
+  z.object({ type: z.literal("distance"), meters: z.number().int().min(1).max(100_000) }),
+  z.object({ type: z.literal("lap") }),
+]);
+export type StepEnd = z.infer<typeof endSchema>;
+
+export const targetSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("none") }),
+  /** Easy-run range from the profile. */
+  z.object({ type: z.literal("easy") }),
+  /** Reference pace from the profile, plus an offset in s/km (positive = slower). */
+  z.object({
+    type: z.literal("pace"),
+    ref: paceRefSchema,
+    offsetSec: z.number().int().min(-60).max(180),
+  }),
+  /** Explicit pace range (seconds per km). */
+  z.object({
+    type: z.literal("range"),
+    fastSec: paceSecSchema,
+    slowSec: paceSecSchema,
+  }),
+]);
+export type StepTarget = z.infer<typeof targetSchema>;
+
+const noteSchema = z.string().trim().max(120).optional();
+
+export const stepSchema = z.object({
+  kind: z.literal("step"),
+  type: stepTypeSchema,
+  end: endSchema,
+  target: targetSchema,
+  note: noteSchema,
+});
+export type Step = z.infer<typeof stepSchema>;
+
+export const repeatSchema = z.object({
+  kind: z.literal("repeat"),
+  times: z.number().int().min(1).max(50),
+  steps: z.array(stepSchema).min(1).max(10),
+});
+export type Repeat = z.infer<typeof repeatSchema>;
+
+export const blockSchema = z.discriminatedUnion("kind", [stepSchema, repeatSchema]);
+export type Block = z.infer<typeof blockSchema>;
+
+export const sessionInputSchema = z.object({
+  date: isoDateSchema,
+  title: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(500).default(""),
+  blocks: z.array(blockSchema).max(40),
+});
+export type SessionInput = z.infer<typeof sessionInputSchema>;
+
+export const sessionSchema = sessionInputSchema.extend({
+  id: uuidSchema,
+  garminWorkoutId: z.string().nullable(),
+  exportedAt: z.string().nullable(),
+  updatedAt: z.string(),
+});
+export type Session = z.infer<typeof sessionSchema>;
+
+/** Output of the screenshot reader before dates are attached. */
+export const parsedSessionSchema = z.object({
+  title: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(500).default(""),
+  blocks: z.array(blockSchema).max(40),
+});
+export const parsedPlanSchema = z.object({
+  sessions: z.array(parsedSessionSchema).min(1).max(14),
+});
+export type ParsedSession = z.infer<typeof parsedSessionSchema>;
+
+export const importOptionsSchema = z.object({
+  startDate: isoDateSchema,
+  group: z.string().trim().max(40).default(""),
+});
+
+export const saveImportSchema = z.object({
+  sessions: z.array(sessionInputSchema).min(1).max(14),
+});
+
+export const weekQuerySchema = z.object({ from: isoDateSchema, to: isoDateSchema });
+
+export const exportWeekSchema = z.object({ from: isoDateSchema, to: isoDateSchema });
+
+/* ---------- Helpers shared by both sides ---------- */
+
+export function refPace(profile: Profile, ref: PaceRef): number {
+  switch (ref) {
+    case "5k":
+      return profile.pace5k;
+    case "10k":
+      return profile.pace10k;
+    case "hm":
+      return profile.paceHm;
+    case "m":
+      return profile.paceM;
+  }
+}
+
+/** Returns [fast, slow] pace in s/km for a target, or null when there is none. */
+export function targetRange(profile: Profile, t: StepTarget): [number, number] | null {
+  switch (t.type) {
+    case "none":
+      return null;
+    case "easy":
+      return [profile.easyFast, profile.easySlow];
+    case "range":
+      return [Math.min(t.fastSec, t.slowSec), Math.max(t.fastSec, t.slowSec)];
+    case "pace": {
+      const c = refPace(profile, t.ref) + t.offsetSec;
+      return [c - profile.toleranceSec, c + profile.toleranceSec];
+    }
+  }
+}
+
+export function formatPace(sec: number): string {
+  const s = Math.round(sec);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+export function parsePace(text: string): number | null {
+  const m = /^\s*(\d{1,2})[:'’](\d{2})\s*$/.exec(text);
+  if (!m) return null;
+  const sec = Number(m[1]) * 60 + Number(m[2]);
+  return Number(m[2]) < 60 ? sec : null;
+}
+
+export function formatDuration(sec: number): string {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h) return `${h}h${String(m).padStart(2, "0")}`;
+  if (!s) return `${m}'`;
+  if (!m) return `${s}"`;
+  return `${m}'${String(s).padStart(2, "0")}`;
+}
+
+const MID_EASY = (p: Profile) => (p.easyFast + p.easySlow) / 2;
+
+/** Rough distance (m) and duration (s) estimate of a session, for display. */
+export function estimate(profile: Profile, blocks: Block[]): { meters: number; seconds: number } {
+  let meters = 0;
+  let seconds = 0;
+  const one = (s: Step) => {
+    const r = targetRange(profile, s.target);
+    const pace =
+      r ? (r[0] + r[1]) / 2 : s.type === "recovery" || s.type === "rest" ? 0 : MID_EASY(profile);
+    if (s.end.type === "time") {
+      seconds += s.end.seconds;
+      if (pace) meters += (s.end.seconds / pace) * 1000;
+    } else if (s.end.type === "distance") {
+      meters += s.end.meters;
+      seconds += pace ? (s.end.meters / 1000) * pace : 0;
+    }
+  };
+  for (const b of blocks) {
+    if (b.kind === "step") one(b);
+    else for (let i = 0; i < b.times; i++) b.steps.forEach(one);
+  }
+  return { meters: Math.round(meters), seconds: Math.round(seconds) };
+}
