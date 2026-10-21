@@ -35,17 +35,6 @@ Le script demande ton e-mail et ton mot de passe Garmin (le mot de passe n'est e
 
 `GARMIN_EMAIL` / `GARMIN_PASSWORD` restent possibles en secours, mais le serveur ne tente alors qu'une connexion à la fois, suivie d'un délai d'attente d'une heure en cas de refus, pour ne pas aggraver le blocage. Limites : l'export passe par l'API web de Garmin Connect (non officielle, via `garmin-connect`) et peut cesser de fonctionner si Garmin la change. Les séances de tous les utilisateurs partent sur ce même compte Garmin.
 
-## Sécurité
-
-- **Accès** : la liste des personnes autorisées est en base de données. Le tout premier compte se crée avec `SETUP_CODE` et devient administrateur ; cette porte se ferme dès qu'un compte existe (verrou transactionnel). Ensuite, un administrateur invite chaque personne depuis *Profil → Qui a accès* : l'appli génère un code d'invitation à usage unique (environ 60 bits, stocké haché, valable 7 jours). Retirer quelqu'un supprime son compte, ses séances et ses sessions, et coupe l'accès immédiatement : chaque requête vérifie le compte en base.
-- **Mots de passe** : Argon2id, verrouillage 15 min après 5 échecs, limitation de débit sur les routes d'authentification, temps de réponse identique pour un compte inexistant.
-- **JWT** : jeton d'accès HS256 de 15 min, gardé uniquement en mémoire côté client (jamais dans `localStorage`). Jeton de rafraîchissement aléatoire de 30 jours dans un cookie `HttpOnly; Secure; SameSite=Strict` limité à `/api/auth`, stocké haché (SHA-256), **rotation à chaque usage** et révocation de toute la famille en cas de réutilisation (vol détecté).
-- **CSRF** : les routes protégées par cookie (`refresh`, `logout`) exigent un jeton double-submit dans l'en-tête `X-CSRF-Token` ; toutes les requêtes d'écriture vérifient l'en-tête `Origin`. Le reste de l'API utilise un en-tête `Authorization`, non envoyé automatiquement par le navigateur.
-- **Injections SQL** : toutes les requêtes sont paramétrées (`$1, $2…`), aucune valeur n'est concaténée.
-- **Validation** : schémas Zod partagés (`shared/schemas.ts`) côté serveur sur chaque entrée, et côté client sur chaque réponse. La sortie de l'IA est validée par le même schéma avant d'être utilisée.
-- **XSS** : React échappe tout le contenu, aucun `dangerouslySetInnerHTML` ; CSP stricte (`script-src 'self'`, pas de script inline), `frame-ancestors 'none'`, `Referrer-Policy: no-referrer`, HSTS en production.
-- **Fichiers** : 5 Mo max, type réel vérifié par les premiers octets, image réduite et ré-encodée sur le téléphone avant l'envoi (métadonnées EXIF supprimées).
-
 ## Développement
 
 ```bash
