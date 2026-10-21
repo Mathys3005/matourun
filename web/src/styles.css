@@ -306,9 +306,9 @@ rect.on { stroke: var(--white); stroke-width: 1.5; }
 .zone-scope { margin: 10px 0 14px; }
 .verdict { background: var(--plum); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 14px; }
 .verdict-text { margin: 0 0 14px; font-weight: 600; font-size: 16px; line-height: 1.4; }
-.verdict-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.verdict-grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 12px; }
 .verdict-grid span { display: block; font-size: 12px; color: var(--muted); }
-.verdict-grid strong { display: block; font: 600 19px/1.15 var(--display); margin: 2px 0; white-space: nowrap; }
+.verdict-grid strong { display: block; font: 600 18px/1.15 var(--display); margin: 2px 0; white-space: nowrap; }
 .verdict-grid small { font-size: 12px; color: var(--lilac); }
 .verdict-foot { margin: 12px 0 0; font-size: 12px; }
 .metrics { display: grid; gap: 4px; }
