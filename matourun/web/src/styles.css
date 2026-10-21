@@ -1,0 +1,232 @@
+:root {
+  --night: #160e24;
+  --plum: #211533;
+  --plum-2: #2c1d45;
+  --dusk: #3a2a5c;
+  --lilac: #b6a5e2;
+  --violet: #9b82e6;
+  --white: #ffffff;
+  --text: #f4f0ff;
+  --muted: #a094bd;
+  --danger: #ff8fa3;
+  --ok: #c9f2d9;
+
+  --radius-lg: 22px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+  --gutter: 18px;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "Manrope", system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--night);
+  color: var(--text);
+  font: 400 15px/1.5 var(--body);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 100dvh;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--white); outline-offset: 2px; border-radius: 6px; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- Shell ---------- */
+
+/* Opaque band under the iPhone status bar (home-screen mode makes it transparent). */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top);
+  background: var(--night);
+  z-index: 30;
+  pointer-events: none;
+}
+
+.shell {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 18px) var(--gutter) calc(env(safe-area-inset-bottom) + 180px);
+}
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.brand img { width: 34px; height: 34px; border-radius: 10px; }
+.brand span { font: 700 24px/1 var(--display); letter-spacing: 0.01em; }
+.brand b { color: var(--violet); font-weight: 700; }
+
+h1 { font: 600 40px/1 var(--display); margin: 0; letter-spacing: 0.005em; }
+h2 { font: 600 24px/1.1 var(--display); margin: 0 0 12px; }
+.lede { color: var(--muted); margin: 8px 0 0; }
+
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  display: flex; justify-content: center; gap: 6px;
+  padding: 10px 12px calc(env(safe-area-inset-bottom) + 10px);
+  background: rgba(22, 14, 36, 0.92);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.tabbar a {
+  flex: 1; max-width: 170px; text-align: center; text-decoration: none;
+  padding: 10px 6px; border-radius: 12px; color: var(--muted); font-weight: 600; font-size: 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.tabbar a svg { width: 22px; height: 22px; }
+.tabbar a.active { color: var(--white); background: var(--plum-2); }
+
+/* ---------- Controls ---------- */
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 0; border-radius: 999px; padding: 13px 20px; font-weight: 700;
+  background: var(--white); color: var(--night); text-decoration: none;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+.btn svg { width: 20px; height: 20px; flex: none; }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.45; cursor: default; transform: none; }
+.btn.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1px var(--dusk); }
+.btn.quiet { background: var(--plum-2); color: var(--text); }
+.btn.danger { background: transparent; color: var(--danger); box-shadow: inset 0 0 0 1px rgba(255, 143, 163, 0.35); }
+.btn.block { width: 100%; }
+.btn.small { padding: 8px 14px; font-size: 14px; }
+.icon-btn {
+  width: 40px; height: 40px; border-radius: 50%; border: 0; display: grid; place-items: center;
+  background: var(--plum-2); color: var(--text); flex: none;
+}
+.icon-btn svg { width: 20px; height: 20px; }
+
+.field { display: grid; gap: 6px; margin-bottom: 14px; }
+.field > span { font-size: 13px; font-weight: 600; color: var(--muted); }
+.input, select.input {
+  width: 100%; background: var(--plum); border: 1px solid var(--dusk); border-radius: var(--radius-sm);
+  padding: 12px 14px; outline: none; font-size: 16px;
+}
+.input:focus { border-color: var(--lilac); }
+/* iOS Safari gives date inputs an intrinsic min-width and centered text. */
+input[type="date"].input {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 48px;
+  text-align: left;
+}
+input[type="date"].input::-webkit-date-and-time-value { text-align: left; margin: 0; }
+.field, .grid2 > * { min-width: 0; }
+select.input { appearance: none; padding-right: 32px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 18px) 52%, calc(100% - 13px) 52%; background-size: 5px 5px; background-repeat: no-repeat; }
+.row { display: flex; gap: 10px; align-items: center; }
+.row > * { flex: 1; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.note { font-size: 13px; color: var(--muted); }
+.error { color: var(--danger); font-size: 14px; margin: 8px 0; }
+.success { color: var(--ok); font-size: 14px; margin: 8px 0; }
+
+.panel { background: var(--plum); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
+
+/* ---------- Login ---------- */
+
+.login { min-height: 100dvh; display: grid; align-content: center; max-width: 400px; margin: 0 auto; padding: 32px var(--gutter); }
+.login-mark { width: 84px; height: 84px; border-radius: 24px; margin-bottom: 22px; }
+.login h1 { font-size: 56px; }
+.login h1 b { color: var(--violet); font-weight: 600; }
+.login form { margin-top: 28px; }
+
+/* ---------- Week ---------- */
+
+.week-head h1 { font-size: 36px; white-space: nowrap; }
+.week-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.week-nav { display: flex; gap: 8px; }
+.week-stats { display: flex; gap: 22px; margin: 18px 0 22px; }
+.stat strong { display: block; font: 600 30px/1 var(--display); }
+.stat span { font-size: 13px; color: var(--muted); }
+
+.days { display: grid; gap: 10px; }
+.day { display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: stretch; }
+.day-spine { text-align: center; padding-top: 14px; }
+.day-spine small { display: block; font-size: 12px; color: var(--muted); text-transform: capitalize; }
+.day-spine strong { font: 600 26px/1 var(--display); }
+.day.today .day-spine strong { display: inline-block; margin-top: 6px; color: var(--night); background: var(--white); border-radius: 10px; padding: 3px 7px; }
+.day-body { display: grid; gap: 8px; }
+.day-empty {
+  border: 1px dashed rgba(182, 165, 226, 0.22); border-radius: var(--radius-md);
+  padding: 14px; color: var(--muted); font-size: 14px; text-decoration: none; display: block;
+}
+
+.card { background: var(--plum); border-radius: var(--radius-md); padding: 14px; display: grid; gap: 10px; }
+.card-top { display: flex; gap: 10px; align-items: flex-start; }
+.card-title { flex: 1; min-width: 0; text-decoration: none; }
+.card-title strong { display: block; font-weight: 700; font-size: 16px; line-height: 1.25; }
+.card-title span { color: var(--muted); font-size: 13px; }
+.export-btn { background: var(--white); color: var(--night); }
+.export-btn.done { background: var(--plum-2); color: var(--ok); }
+.export-btn.busy svg { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Effort profile: the session drawn like a watch workout graph. */
+.profile-bar { display: flex; align-items: flex-end; gap: 2px; height: 34px; }
+.profile-bar i { display: block; border-radius: 3px 3px 1px 1px; min-width: 3px; background: var(--dusk); }
+.profile-bar i[data-z="1"] { background: #5b4890; }
+.profile-bar i[data-z="2"] { background: var(--violet); }
+.profile-bar i[data-z="3"] { background: #d6caf6; }
+.profile-bar i[data-z="4"] { background: var(--white); }
+.profile-bar i[data-z="0"] { background: #3a2a5c; }
+.profile-bar.big { height: 64px; gap: 3px; }
+
+.week-cta {
+  position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 76px); z-index: 9;
+  display: flex; justify-content: center; padding: 0 var(--gutter); pointer-events: none;
+}
+.week-cta .btn { pointer-events: auto; max-width: 504px; width: 100%; box-shadow: 0 10px 30px rgba(10, 4, 20, 0.6); }
+
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 140px);
+  background: var(--white); color: var(--night); padding: 10px 16px; border-radius: 12px; font-weight: 600;
+  z-index: 20; max-width: calc(100% - 36px); font-size: 14px;
+}
+.toast.bad { background: var(--danger); }
+
+/* ---------- Editor ---------- */
+
+.steps { display: grid; gap: 10px; }
+.step { background: var(--plum); border-radius: var(--radius-md); padding: 12px; display: grid; gap: 10px; border-left: 4px solid var(--dusk); }
+.step[data-type="warmup"], .step[data-type="cooldown"] { border-left-color: #5b4890; }
+.step[data-type="interval"] { border-left-color: var(--white); }
+.step[data-type="recovery"], .step[data-type="rest"] { border-left-color: var(--dusk); }
+.step-head { display: flex; gap: 8px; align-items: center; }
+.step-head select { flex: 1; }
+.step-tools { display: flex; gap: 4px; }
+.step-tools .icon-btn { width: 34px; height: 34px; }
+.step-tools .icon-btn svg { width: 16px; height: 16px; }
+.repeat { background: var(--plum-2); border-radius: var(--radius-lg); padding: 12px; display: grid; gap: 10px; }
+.repeat .step { background: var(--plum); }
+.repeat-head { display: flex; gap: 8px; align-items: center; font-weight: 700; }
+.repeat-head .input { width: 76px; flex: none; }
+.add-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.target-hint { font-size: 13px; color: var(--lilac); }
+
+.import-preview { display: grid; gap: 10px; margin-top: 8px; }
+.drop {
+  display: grid; place-items: center; text-align: center; gap: 8px; min-height: 150px;
+  border: 1.5px dashed rgba(182, 165, 226, 0.4); border-radius: var(--radius-lg); padding: 18px; cursor: pointer;
+  color: var(--muted);
+}
+.drop img { max-width: 100%; max-height: 260px; border-radius: var(--radius-sm); }
+.drop input { display: none; }
+.drop strong { color: var(--text); }
+
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 0.8s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
