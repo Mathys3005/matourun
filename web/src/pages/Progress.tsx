@@ -5,6 +5,7 @@ import { fromIso } from "../lib/dates";
 import { useApp } from "../App";
 import { Consistency, PaceTrend, WeeklyDistance, shortDay } from "../components/charts";
 import { IconSync } from "../components/Icons";
+import { ZoneEvolution } from "../components/ZoneEvolution";
 
 const RANGES = [
   { weeks: 12, label: "12 semaines" },
@@ -102,6 +103,7 @@ export function Progress() {
         <div className="sync-row">
           <span className="note">
             {data.sync.lastSyncAt ? `Sorties Garmin importées ${since(data.sync.lastSyncAt)}` : "Sorties Garmin pas encore importées"}
+            {data.lapsPending > 0 && `, détail des tours : ${data.lapsPending} restante${data.lapsPending > 1 ? "s" : ""}`}
           </span>
           <button className={`btn ghost small${syncing ? " busy" : ""}`} disabled={syncing} onClick={() => sync()}>
             <IconSync /> {syncing ? "Import…" : "Synchroniser"}
@@ -164,6 +166,10 @@ export function Progress() {
           <WeeklyDistance key={`d${weeks}`} weeks={data.weeks} />
           <PaceTrend key={`p${weeks}`} weeks={data.weeks} />
           {data.sync.hasActivities && <Consistency key={`c${weeks}`} weeks={data.weeks} days={data.days} />}
+
+          {data.sync.hasActivities && (
+            <ZoneEvolution key={`z${weeks}`} zones={data.zones} weeks={data.weeks} lapsPending={data.lapsPending} />
+          )}
 
           {data.sync.hasActivities && (
             <section className="records" aria-label="Records de la période">

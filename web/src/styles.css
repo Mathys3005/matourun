@@ -294,6 +294,30 @@ select.input { appearance: none; padding-right: 32px; background-image: linear-g
 .seq-5 { fill: var(--viz-seq-5); background: var(--viz-seq-5); }
 rect.on { stroke: var(--white); stroke-width: 1.5; }
 
+.zone-evo { margin: 26px 0 8px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chips button {
+  flex: none; border: 1px solid var(--dusk); background: transparent; color: var(--text);
+  padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: 14px;
+}
+.chips button.on { background: var(--white); color: var(--night); border-color: var(--white); }
+.chips button.empty:not(.on) { color: var(--muted); }
+.zone-scope { margin: 10px 0 14px; }
+.verdict { background: var(--plum); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 14px; }
+.verdict-text { margin: 0 0 14px; font-weight: 600; font-size: 16px; line-height: 1.4; }
+.verdict-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.verdict-grid span { display: block; font-size: 12px; color: var(--muted); }
+.verdict-grid strong { display: block; font: 600 19px/1.15 var(--display); margin: 2px 0; white-space: nowrap; }
+.verdict-grid small { font-size: 12px; color: var(--lilac); }
+.verdict-foot { margin: 12px 0 0; font-size: 12px; }
+.metrics { display: grid; gap: 4px; }
+.metrics .viz-readout { margin-top: 0; }
+.metric-head { display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px; }
+.metric-head span { font-size: 13px; color: var(--muted); font-weight: 600; }
+.metric-head strong { font-size: 15px; }
+.metric-empty { margin: 6px 0 10px; font-size: 13px; }
+
 .records { margin: 26px 0 8px; }
 .record-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .record { background: var(--plum); border-radius: var(--radius-md); padding: 14px; display: grid; gap: 2px; align-content: start; }

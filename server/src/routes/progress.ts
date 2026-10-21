@@ -3,7 +3,7 @@ import rateLimit from "express-rate-limit";
 import { progressQuerySchema } from "../../../shared/schemas.js";
 import { asyncH, HttpError, requireAdmin } from "../middleware/security.js";
 import { garminConfigured } from "../lib/garminClient.js";
-import { computeProgress, lastSyncAt, syncActivities } from "../lib/progress.js";
+import { computeProgress, lastSyncAt, syncActivities, syncLaps } from "../lib/progress.js";
 
 /** The Garmin account belongs to the server, so only admins import its runs. */
 const canSync = (role: string) => role === "admin" && garminConfigured();
@@ -36,6 +36,8 @@ progressRouter.post(
     // A sync from less than 2 minutes ago is reused rather than hitting Garmin again.
     const last = await lastSyncAt(req.user!.id);
     if (last && Date.now() - last.getTime() < 2 * 60_000) {
+      // Only continue importing the laps still missing.
+      await syncLaps(req.user!.id);
       return res.json({ added: 0, total: -1, lastSyncAt: last.toISOString() });
     }
     res.json(await syncActivities(req.user!.id));

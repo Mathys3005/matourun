@@ -306,6 +306,29 @@ export type ProgressActivity = z.infer<typeof progressActivitySchema>;
 
 const recordSchema = z.object({ value: z.number(), date: isoDateSchema }).nullable();
 
+export const ZONE_KEYS = ["footing", "m", "hm", "10k", "5k"] as const;
+const snapshotSchema = z
+  .object({ paceSec: z.number(), hr: z.number().nullable(), cadence: z.number().nullable() })
+  .nullable();
+export const progressZoneSchema = z.object({
+  key: z.enum(ZONE_KEYS),
+  /** [fast, slow] s/km */
+  range: z.tuple([z.number(), z.number()]),
+  /** Same order as `weeks` of the progress response. */
+  weeks: z.array(
+    z.object({
+      paceSec: z.number().nullable(),
+      hr: z.number().nullable(),
+      cadence: z.number().nullable(),
+      minutes: z.number(),
+    }),
+  ),
+  start: snapshotSchema,
+  end: snapshotSchema,
+  minutes: z.number(),
+});
+export type ProgressZone = z.infer<typeof progressZoneSchema>;
+
 export const progressSchema = z.object({
   weeks: z.array(progressWeekSchema),
   days: z.array(z.object({ date: isoDateSchema, km: z.number() })),
@@ -317,6 +340,9 @@ export const progressSchema = z.object({
     streakWeeks: z.number().int(),
   }),
   sync: z.object({ canSync: z.boolean(), lastSyncAt: z.string().nullable(), hasActivities: z.boolean() }),
+  zones: z.array(progressZoneSchema),
+  /** Runs whose laps are not imported yet (fetched a few dozen per sync). */
+  lapsPending: z.number().int(),
 });
 export type Progress = z.infer<typeof progressSchema>;
 

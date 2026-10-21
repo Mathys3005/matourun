@@ -261,6 +261,12 @@ export async function listActivities(start: number, limit: number): Promise<unkn
   return withGarmin((g) => g.get<unknown>(`${API}/activitylist-service/activities/search/activities?${qs}`));
 }
 
+/** Laps of one activity (raw, untrusted). */
+export async function getSplits(activityId: string): Promise<unknown> {
+  if (!/^\d+$/.test(activityId)) throw new HttpError(400, "Activité invalide");
+  return withGarmin((g) => g.get<unknown>(`${API}/activity-service/activity/${activityId}/splits`));
+}
+
 /** Deleting the workout also removes it from the Garmin calendar. */
 export async function deleteWorkout(workoutId: string): Promise<void> {
   if (!/^\d+$/.test(workoutId)) return;

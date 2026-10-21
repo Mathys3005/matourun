@@ -13,6 +13,7 @@ const garminList = [
   { activityId: 14, activityName: "Très ancienne", startTimeLocal: `${day(-400)} 09:00:00`, activityType: { typeKey: "running" }, distance: 5000, duration: 1500 },
 ];
 const listCalls: string[] = [];
+const splitCalls: string[] = [];
 
 vi.mock("garmin-connect", () => ({
   default: {
@@ -24,6 +25,23 @@ vi.mock("garmin-connect", () => ({
         this.t = { oauth1, oauth2 };
       }
       async get(url: string) {
+        if (url.includes("/splits")) {
+          splitCalls.push(url);
+          // Run 11: 2 easy km, 3 km at 10k pace, 1 short sprint (ignored).
+          return {
+            lapDTOs: url.includes("/11/")
+              ? [
+                  { lapIndex: 1, distance: 1000, duration: 330, movingDuration: 330, averageHR: 140, averageRunCadence: 170 },
+                  { lapIndex: 2, distance: 1000, duration: 325, movingDuration: 325, averageHR: 142, averageRunCadence: 171 },
+                  { lapIndex: 3, distance: 1000, duration: 236, movingDuration: 236, averageHR: 170, averageRunCadence: 182 },
+                  { lapIndex: 4, distance: 1000, duration: 234, movingDuration: 234, averageHR: 172, averageRunCadence: 183 },
+                  { lapIndex: 5, distance: 1000, duration: 235, movingDuration: 235, averageHR: 174, averageRunCadence: 184 },
+                  { lapIndex: 6, distance: 150, duration: 25, movingDuration: 25, averageHR: 160 },
+                  { lapIndex: "bad" },
+                ]
+              : [],
+          };
+        }
         if (url.includes("activitylist-service")) {
           listCalls.push(url);
           return new URL(url).searchParams.get("start") === "0" ? garminList : [];
@@ -85,6 +103,7 @@ describe("Progression", () => {
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ added: 2, total: 2 });
     expect(listCalls).toHaveLength(1);
+    expect(splitCalls).toHaveLength(2); // laps of both runs
 
     // A second sync right away doesn't hit Garmin.
     r = await request(app).post("/api/progress/sync").set(as(admin));
@@ -111,6 +130,17 @@ describe("Progression", () => {
     expect(records.streakWeeks).toBeGreaterThanOrEqual(1);
     expect(days.map((d: { date: string }) => d.date)).toContain(day(0));
     expect(sync).toMatchObject({ canSync: true, hasActivities: true });
+  });
+
+  it("isolates the laps run at 10k pace and the easy runs", async () => {
+    const r = await request(app).get("/api/progress?weeks=12").set(as(admin));
+    const zone = (k: string) => r.body.zones.find((z: { key: string }) => z.key === k);
+    const tenK = zone("10k").weeks[11];
+    expect(tenK).toMatchObject({ paceSec: 235, hr: 172, cadence: 183, minutes: 12 });
+    expect(zone("5k").minutes).toBe(0);
+    // The trail run (no laps, easy average pace) counts as a footing.
+    expect(zone("footing").minutes).toBe(120);
+    expect(r.body.lapsPending).toBe(0);
   });
 
   it("keeps each person's data and Garmin sync to themselves", async () => {

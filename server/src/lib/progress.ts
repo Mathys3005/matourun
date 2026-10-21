@@ -1,8 +1,10 @@
 import { z } from "zod";
-import { estimate, type Progress, type ProgressWeek } from "../../../shared/schemas.js";
+import { estimate, type Progress, type ProgressWeek, type ProgressZone } from "../../../shared/schemas.js";
 import { q, tx } from "../db.js";
 import { getProfile, listSessions } from "./store.js";
-import { listActivities } from "./garminClient.js";
+import { getSplits, listActivities } from "./garminClient.js";
+import { HttpError } from "../middleware/security.js";
+import { Acc, FOOTING_SHARE, MIN_LAP_M, MIN_LAP_SEC, ZONE_KEYS, startEnd, zoneBounds, zoneOfPace, type ZoneKey } from "./zones.js";
 
 /* ---------- Dates (calendar days as YYYY-MM-DD, in the runner's time zone) ---------- */
 
@@ -100,6 +102,8 @@ export async function syncActivities(userId: string): Promise<{ added: number; t
     return inserted;
   });
 
+  await syncLaps(userId);
+
   const { rows } = await q<{ synced: Date; total: number }>(
     `UPDATE users SET garmin_synced_at = now() WHERE id = $1
      RETURNING garmin_synced_at AS synced,
@@ -107,6 +111,60 @@ export async function syncActivities(userId: string): Promise<{ added: number; t
     [userId],
   );
   return { added, total: rows[0]?.total ?? 0, lastSyncAt: rows[0]!.synced.toISOString() };
+}
+
+const lapSchema = z.object({
+  lapIndex: z.number().int().nonnegative(),
+  distance: z.number().nonnegative().nullish(),
+  duration: z.number().nonnegative().nullish(),
+  movingDuration: z.number().nonnegative().nullish(),
+  averageHR: z.number().positive().max(260).nullish(),
+  averageRunCadence: z.number().positive().max(300).nullish(),
+});
+
+/** Laps per sync: one Garmin call each, newest runs first, the rest on the next sync. */
+const LAPS_PER_SYNC = 40;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export async function syncLaps(userId: string, max = LAPS_PER_SYNC, pauseMs = 250): Promise<number> {
+  const { rows } = await q<{ id: string }>(
+    `SELECT garmin_id::text AS id FROM activities WHERE user_id = $1 AND NOT laps_synced
+      ORDER BY start_local DESC LIMIT $2`,
+    [userId, max],
+  );
+  let done = 0;
+  let failures = 0;
+  for (const { id } of rows) {
+    let raw: unknown;
+    try {
+      raw = await getSplits(id);
+    } catch (err) {
+      if (err instanceof HttpError && err.status === 429) break; // Garmin is limiting: stop here
+      if (++failures >= 3) break;
+      continue;
+    }
+    const list = (raw as { lapDTOs?: unknown })?.lapDTOs;
+    const laps = (Array.isArray(list) ? list : [])
+      .map((l) => lapSchema.safeParse(l))
+      .flatMap((r) => (r.success ? [r.data] : []))
+      .slice(0, 400);
+    await tx(async (c) => {
+      await c.query(`DELETE FROM activity_laps WHERE user_id = $1 AND garmin_id = $2`, [userId, id]);
+      for (const l of laps) {
+        const sec = l.movingDuration || l.duration || 0;
+        if (!sec || !l.distance) continue;
+        await c.query(
+          `INSERT INTO activity_laps (user_id, garmin_id, lap_index, distance_m, moving_s, avg_hr, avg_cadence)
+           VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING`,
+          [userId, id, l.lapIndex, l.distance, sec, l.averageHR ?? null, l.averageRunCadence ?? null],
+        );
+      }
+      await c.query(`UPDATE activities SET laps_synced = true WHERE user_id = $1 AND garmin_id = $2`, [userId, id]);
+    });
+    done++;
+    if (pauseMs) await sleep(pauseMs);
+  }
+  return done;
 }
 
 export async function lastSyncAt(userId: string): Promise<Date | null> {
@@ -125,6 +183,7 @@ interface Run {
   durationSec: number;
   movingSec: number;
   avgHr: number | null;
+  cadence: number | null;
   elevation: number | null;
 }
 
@@ -175,10 +234,11 @@ export async function computeProgress(
     duration_s: number;
     moving_s: number | null;
     avg_hr: number | null;
+    cadence: number | null;
     elevation_m: number | null;
   }>(
     `SELECT garmin_id::text AS id, name, to_char(start_local, 'YYYY-MM-DD') AS date,
-            to_char(start_local, 'HH24:MI') AS time, distance_m, duration_s, moving_s, avg_hr, elevation_m
+            to_char(start_local, 'HH24:MI') AS time, distance_m, duration_s, moving_s, avg_hr, cadence, elevation_m
        FROM activities
       WHERE user_id = $1 AND start_local >= $2::date AND start_local < ($3::date + 1)
       ORDER BY start_local DESC`,
@@ -193,6 +253,7 @@ export async function computeProgress(
     durationSec: r.duration_s,
     movingSec: r.moving_s && r.moving_s > 0 ? r.moving_s : r.duration_s,
     avgHr: r.avg_hr ? Math.round(r.avg_hr) : null,
+    cadence: r.cadence ? Math.round(r.cadence) : null,
     elevation: r.elevation_m === null ? null : Math.round(r.elevation_m),
   }));
 
@@ -236,6 +297,8 @@ export async function computeProgress(
     k--;
   }
 
+  const zones = await computeZones(userId, runs, table.length, weekIndex, profile);
+
   const { rows: any } = await q<{ has: boolean }>(
     `SELECT EXISTS (SELECT 1 FROM activities WHERE user_id = $1) AS has`,
     [userId],
@@ -264,5 +327,94 @@ export async function computeProgress(
       streakWeeks: streak,
     },
     sync: { canSync: sync.canSync, lastSyncAt: synced?.toISOString() ?? null, hasActivities: any[0]?.has ?? false },
+    zones: zones.zones,
+    lapsPending: zones.lapsPending,
   };
+}
+
+/* ---------- Evolution per pace zone ---------- */
+
+async function computeZones(
+  userId: string,
+  runs: Run[],
+  weekCount: number,
+  weekIndex: (date: string) => number,
+  profile: Awaited<ReturnType<typeof getProfile>>,
+): Promise<{ zones: ProgressZone[]; lapsPending: number }> {
+  const bounds = zoneBounds(profile);
+  const ids = runs.map((r) => r.id);
+  const { rows: laps } = ids.length
+    ? await q<{ id: string; distance_m: number; moving_s: number; avg_hr: number | null; avg_cadence: number | null }>(
+        `SELECT garmin_id::text AS id, distance_m, moving_s, avg_hr, avg_cadence
+           FROM activity_laps WHERE user_id = $1 AND garmin_id = ANY($2::bigint[])
+          ORDER BY garmin_id, lap_index`,
+        [userId, ids],
+      )
+    : { rows: [] };
+  const lapsByRun = new Map<string, typeof laps>();
+  for (const l of laps) {
+    const list = lapsByRun.get(l.id) ?? [];
+    list.push(l);
+    lapsByRun.set(l.id, list);
+  }
+
+  const acc: Record<ZoneKey, Acc[]> = Object.fromEntries(
+    ZONE_KEYS.map((k) => [k, Array.from({ length: weekCount }, () => new Acc())]),
+  ) as Record<ZoneKey, Acc[]>;
+
+  for (const r of runs) {
+    const w = weekIndex(r.date);
+    if (w < 0 || w >= weekCount) continue;
+    const valid = (lapsByRun.get(r.id) ?? []).filter((l) => l.moving_s >= MIN_LAP_SEC && l.distance_m >= MIN_LAP_M);
+
+    // Footing: whole easy runs (by laps when available, else by average pace).
+    let easyShare: number;
+    if (valid.length) {
+      const total = valid.reduce((s, l) => s + l.moving_s, 0);
+      const easy = valid
+        .filter((l) => zoneOfPace(l.moving_s / (l.distance_m / 1000), bounds) === "footing")
+        .reduce((s, l) => s + l.moving_s, 0);
+      easyShare = easy / total;
+    } else {
+      easyShare = zoneOfPace(r.movingSec / r.km, bounds) === "footing" ? 1 : 0;
+    }
+    if (easyShare >= FOOTING_SHARE) {
+      acc.footing[w]!.add({ km: r.km, sec: r.movingSec, hr: r.avgHr, cadence: r.cadence });
+      continue;
+    }
+
+    // Quality runs: each lap goes to the zone of its pace.
+    for (const l of valid) {
+      const km = l.distance_m / 1000;
+      const z = zoneOfPace(l.moving_s / km, bounds);
+      if (z && z !== "footing") acc[z][w]!.add({ km, sec: l.moving_s, hr: l.avg_hr, cadence: l.avg_cadence });
+    }
+  }
+
+  const zones: ProgressZone[] = ZONE_KEYS.map((key) => {
+    const weeks = acc[key];
+    const { start, end } = startEnd(weeks);
+    return {
+      key,
+      range: bounds.ranges[key].map(Math.round) as [number, number],
+      weeks: weeks.map((a) => {
+        const snap = a.snapshot();
+        return {
+          paceSec: snap?.paceSec ?? null,
+          hr: snap?.hr ?? null,
+          cadence: snap?.cadence ?? null,
+          minutes: Math.round(a.sec / 60),
+        };
+      }),
+      start,
+      end,
+      minutes: Math.round(weeks.reduce((s, a) => s + a.sec, 0) / 60),
+    };
+  });
+
+  const { rows: pending } = await q<{ n: number }>(
+    `SELECT count(*)::int AS n FROM activities WHERE user_id = $1 AND NOT laps_synced`,
+    [userId],
+  );
+  return { zones, lapsPending: pending[0]?.n ?? 0 };
 }

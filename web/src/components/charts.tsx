@@ -333,3 +333,110 @@ export function Consistency({ weeks, days }: { weeks: ProgressWeek[]; days: { da
     </ChartFrame>
   );
 }
+
+/* ---------- Small metric trend (one series), selection controlled by the parent ---------- */
+
+export function MetricTrend({
+  title,
+  weeks,
+  values,
+  format,
+  tick = (v) => String(Math.round(v)),
+  invert = false,
+  sel,
+  onSelect,
+}: {
+  title: string;
+  weeks: ProgressWeek[];
+  values: (number | null)[];
+  format: (v: number) => string;
+  /** Axis ticks: the bare number, the unit is in the title. */
+  tick?: (v: number) => string;
+  /** Pace: smaller is better, drawn higher. */
+  invert?: boolean;
+  sel: number;
+  onSelect: (i: number) => void;
+}) {
+  const n = weeks.length;
+  const H = 104;
+  const pad = { ...PAD, top: 8, bottom: 20 };
+  const plotH = H - pad.top - pad.bottom;
+  const present = values.filter((v): v is number => v !== null);
+  const slot = PLOT_W / n;
+  const cx = (i: number) => PAD.left + slot * (i + 0.5);
+  const clamp = (i: number) => Math.max(0, Math.min(n - 1, i));
+
+  const lo = present.length ? Math.min(...present) : 0;
+  const hi = present.length ? Math.max(...present) : 1;
+  const span = Math.max(hi - lo, invert ? 10 : 4);
+  const min = lo - span * 0.15;
+  const max = hi + span * 0.15;
+  const y = (v: number) => {
+    const t = (v - min) / (max - min);
+    return pad.top + (invert ? t : 1 - t) * plotH;
+  };
+
+  let d = "";
+  let pen = false;
+  values.forEach((v, i) => {
+    if (v === null) {
+      pen = false;
+      return;
+    }
+    d += `${pen ? "L" : "M"}${cx(i)},${y(v)} `;
+    pen = true;
+  });
+  const v = values[sel] ?? null;
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    const step = e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    onSelect(clamp(sel + step));
+  };
+  const pick = (e: PointerEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * W - PAD.left;
+    onSelect(clamp(Math.floor((x / PLOT_W) * n)));
+  };
+
+  return (
+    <div className="metric">
+      <div className="metric-head">
+        <span>{title}</span>
+        <strong className="num">{v !== null ? format(v) : "–"}</strong>
+      </div>
+      {present.length === 0 ? (
+        <p className="note metric-empty">Pas de donnée sur la période</p>
+      ) : (
+        <svg
+          className="viz"
+          viewBox={`0 0 ${W} ${H}`}
+          role="img"
+          aria-label={`${title} par semaine. Flèches gauche et droite pour parcourir les semaines.`}
+          tabIndex={0}
+          onKeyDown={onKeyDown}
+          onPointerMove={pick}
+          onPointerDown={pick}
+        >
+          {[lo, hi].map((t, k) => (
+            <g key={k}>
+              <line className="viz-grid" x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} />
+              <text className="viz-tick" x={PAD.left - 6} y={y(t) + 3.5} textAnchor="end">
+                {tick(t)}
+              </text>
+            </g>
+          ))}
+          <line className="viz-crosshair" x1={cx(sel)} x2={cx(sel)} y1={pad.top} y2={pad.top + plotH} />
+          <path className="viz-line" d={d} />
+          {values.map((val, i) =>
+            val !== null ? (
+              <circle key={i} className={`viz-dot${i === sel ? " on" : ""}`} cx={cx(i)} cy={y(val)} r={i === sel ? 5 : 4} />
+            ) : null,
+          )}
+          <XLabels weeks={weeks} y={H - 5} />
+        </svg>
+      )}
+    </div>
+  );
+}

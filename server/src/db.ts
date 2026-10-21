@@ -96,6 +96,19 @@ const MIGRATIONS: string[] = [
    )`,
   `CREATE INDEX IF NOT EXISTS activities_user_start_idx ON activities(user_id, start_local)`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS garmin_synced_at timestamptz`,
+  // Laps (splits) of each run: lets the Progression tab isolate the parts run at 5k/10k/... pace.
+  `ALTER TABLE activities ADD COLUMN IF NOT EXISTS laps_synced boolean NOT NULL DEFAULT false`,
+  `CREATE TABLE IF NOT EXISTS activity_laps (
+     user_id uuid NOT NULL,
+     garmin_id bigint NOT NULL,
+     lap_index int NOT NULL,
+     distance_m real NOT NULL,
+     moving_s real NOT NULL,
+     avg_hr real,
+     avg_cadence real,
+     PRIMARY KEY (user_id, garmin_id, lap_index),
+     FOREIGN KEY (user_id, garmin_id) REFERENCES activities(user_id, garmin_id) ON DELETE CASCADE
+   )`,
   `CREATE TABLE IF NOT EXISTS app_secrets (
      key text PRIMARY KEY,
      value text NOT NULL,
