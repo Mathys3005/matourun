@@ -5,6 +5,7 @@ import { q } from "../db.js";
 import { open, seal } from "./secretBox.js";
 import { getProfile, listSessions } from "./store.js";
 import { todayIso } from "./progress.js";
+import { goingBetween } from "./competitions.js";
 
 /* Web push (VAPID). The key pair is generated once and kept encrypted in the database,
    so there is nothing to configure. */
@@ -139,6 +140,16 @@ export async function runReminders(now = new Date()): Promise<number> {
   for (const { user_id } of rows) {
     // Marked first: a crash mid-way never sends the same reminder twice.
     await q(`UPDATE reminders SET last_sent = $2::date WHERE user_id = $1`, [user_id, today]);
+    const races = await goingBetween(user_id, today, today);
+    if (races.length) {
+      const r = races[0]!;
+      sent += await sendToUser(user_id, {
+        title: "Jour de compétition",
+        body: `${r.title}${r.place ? `, ${r.place}` : ""}. Bonne course !`,
+        url: "/competitions",
+      });
+      continue;
+    }
     const sessions = await listSessions(user_id, today, today);
     if (!sessions.length) continue;
     const profile = await getProfile(user_id);

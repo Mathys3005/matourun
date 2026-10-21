@@ -20,6 +20,8 @@ import * as garmin from "../lib/garminClient.js";
 import { adminRouter } from "./admin.js";
 import { progressRouter } from "./progress.js";
 import { pushRouter } from "./push.js";
+import { competitionsRouter } from "./competitions.js";
+import { goingBetween } from "../lib/competitions.js";
 import { listRuns } from "../lib/progress.js";
 
 const upload = multer({
@@ -47,6 +49,7 @@ apiRouter.use(requireAuth);
 apiRouter.use("/admin", adminRouter);
 apiRouter.use("/progress", progressRouter);
 apiRouter.use("/push", pushRouter);
+apiRouter.use("/competitions", competitionsRouter);
 
 apiRouter.get("/config", (_req, res) => {
   res.json({ garmin: garmin.garminConfigured() });
@@ -129,6 +132,15 @@ apiRouter.patch(
       }
     }
     res.json({ session: await store.getSession(req.user!.id, id), garmin: garminStatus });
+  }),
+);
+
+apiRouter.get(
+  "/week-competitions",
+  asyncH(async (req, res) => {
+    const { from, to } = weekQuerySchema.parse(req.query);
+    checkRange(from, to);
+    res.json(await goingBetween(req.user!.id, from, to));
   }),
 );
 

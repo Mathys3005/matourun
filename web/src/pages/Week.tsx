@@ -6,7 +6,7 @@ import { addDays, dayNumber, mondayOf, shortDate, today, weekdayShort } from "..
 import { sessionSummary } from "../lib/describe";
 import { useApp } from "../App";
 import { ProfileBar } from "../components/ProfileBar";
-import { IconCheck, IconLeft, IconRight, IconSync, IconWatch } from "../components/Icons";
+import { IconCheck, IconFlag, IconLeft, IconRight, IconSync, IconWatch } from "../components/Icons";
 import { useDragToDay } from "../lib/useDragToDay";
 
 const km1 = (n: number) => n.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
@@ -21,6 +21,7 @@ export function Week() {
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(monday, i)), [monday]);
 
   const [sessions, setSessions] = useState<Session[] | null>(null);
+  const [races, setRaces] = useState<Array<{ id: string; startDate: string; endDate: string; title: string; place: string | null }>>([]);
   const [runs, setRuns] = useState<{ runs: DayRun[]; hasActivities: boolean }>({ runs: [], hasActivities: false });
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [weekBusy, setWeekBusy] = useState(false);
@@ -31,6 +32,7 @@ export function Week() {
       toast(e.message, true);
     });
     api.runs(monday, sunday).then(setRuns, () => undefined);
+    api.weekCompetitions(monday, sunday).then(setRaces, () => undefined);
   }, [monday, sunday, toast]);
 
   const move = useCallback(
@@ -164,6 +166,7 @@ export function Week() {
           // Runs are matched to the day's sessions in order; extra runs are "free" runs.
           const extra = dayRuns.slice(list.length);
           const past = d < today();
+          const dayRaces = races.filter((r) => r.startDate <= d && r.endDate >= d);
           return (
             <section
               key={d}
@@ -177,7 +180,16 @@ export function Week() {
               </div>
               <div className="day-body">
                 {sessions === null && <div className="day-empty">…</div>}
-                {sessions !== null && !list.length && !dayRuns.length && (
+                {dayRaces.map((r) => (
+                  <Link key={r.id} to="/competitions" className="race-chip">
+                    <IconFlag />
+                    <span>
+                      <strong>{r.title}</strong>
+                      {r.place ? ` ${r.place}` : ""}
+                    </span>
+                  </Link>
+                ))}
+                {sessions !== null && !list.length && !dayRuns.length && !dayRaces.length && (
                   <Link className="day-empty" to={`/nouvelle/${d}`}>
                     {drag ? "Déposer ici" : "Repos. Ajouter une séance"}
                   </Link>

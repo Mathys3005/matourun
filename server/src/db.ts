@@ -124,6 +124,24 @@ const MIGRATIONS: string[] = [
      time text NOT NULL DEFAULT '07:30',
      last_sent date
    )`,
+  // Club competition calendar (shared by everyone) and who goes where.
+  `CREATE TABLE IF NOT EXISTS competitions (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     season text NOT NULL,
+     start_date date NOT NULL,
+     end_date date NOT NULL,
+     title text NOT NULL,
+     place text,
+     categories text[],
+     created_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE INDEX IF NOT EXISTS competitions_date_idx ON competitions(start_date)`,
+  `CREATE TABLE IF NOT EXISTS competition_entries (
+     user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     competition_id uuid NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
+     created_at timestamptz NOT NULL DEFAULT now(),
+     PRIMARY KEY (user_id, competition_id)
+   )`,
   `CREATE TABLE IF NOT EXISTS app_secrets (
      key text PRIMARY KEY,
      value text NOT NULL,

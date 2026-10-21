@@ -2,11 +2,15 @@ import { useEffect, useState } from "react";
 import { formatPace, parsePace, profileSchema, type Profile } from "@shared/schemas";
 import { api } from "../lib/api";
 import { useApp } from "../App";
+import { categoryAt, categoryName } from "@shared/categories";
+import { today } from "../lib/dates";
 import { AccessAdmin } from "../components/AccessAdmin";
 import { ThemePicker } from "../components/ThemePicker";
 import { Reminders } from "../components/Reminders";
 
-const FIELDS: Array<{ key: keyof Profile; label: string }> = [
+type PaceKey = "pace5k" | "pace10k" | "paceHm" | "paceM" | "easyFast" | "easySlow";
+
+const FIELDS: Array<{ key: PaceKey; label: string }> = [
   { key: "pace5k", label: "Allure 5 km" },
   { key: "pace10k", label: "Allure 10 km" },
   { key: "paceHm", label: "Allure semi" },
@@ -15,18 +19,19 @@ const FIELDS: Array<{ key: keyof Profile; label: string }> = [
   { key: "easySlow", label: "Footing, le plus lent" },
 ];
 
-type PaceKey = Exclude<keyof Profile, "toleranceSec">;
 
 export function ProfilePage() {
   const { profile, setProfile, email, isAdmin, logout, toast } = useApp();
   const [text, setText] = useState<Record<string, string>>({});
   const [tolerance, setTolerance] = useState(profile.toleranceSec);
+  const [birth, setBirth] = useState(profile.birthDate ?? "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     setText(Object.fromEntries(FIELDS.map((f) => [f.key, formatPace(profile[f.key])])));
     setTolerance(profile.toleranceSec);
+    setBirth(profile.birthDate ?? "");
   }, [profile]);
 
   async function save() {
@@ -35,14 +40,14 @@ export function ProfilePage() {
     for (const f of FIELDS) {
       const v = parsePace(text[f.key] ?? "");
       if (v === null) return setError(`${f.label} : format attendu min:ss, par ex. 3:55`);
-      values[f.key as PaceKey] = v;
+      values[f.key] = v;
     }
-    const parsed = profileSchema.safeParse({ ...values, toleranceSec: tolerance });
+    const parsed = profileSchema.safeParse({ ...values, toleranceSec: tolerance, birthDate: birth || null });
     if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? "Profil invalide");
     setBusy(true);
     try {
       setProfile(await api.saveProfile(parsed.data));
-      toast("Allures enregistrées");
+      toast("Profil enregistré");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -82,9 +87,21 @@ export function ProfilePage() {
         </label>
       </div>
 
+      <div className="panel">
+        <label className="field" style={{ marginBottom: 6 }}>
+          <span>Date de naissance</span>
+          <input className="input" type="date" value={birth} max={today()} onChange={(e) => setBirth(e.target.value)} />
+        </label>
+        <p className="note" style={{ margin: 0 }}>
+          {birth
+            ? `Catégorie FFA cette saison : ${categoryName(categoryAt(birth, today()))}. Elle sert à filtrer les compétitions.`
+            : "Sert à calculer ta catégorie FFA pour filtrer les compétitions."}
+        </p>
+      </div>
+
       {error && <p className="error" role="alert">{error}</p>}
       <button className="btn block" disabled={busy} onClick={save}>
-        {busy ? <span className="spinner" /> : "Enregistrer mes allures"}
+        {busy ? <span className="spinner" /> : "Enregistrer mon profil"}
       </button>
 
       <Reminders />

@@ -12,6 +12,9 @@ import {
   syncResultSchema,
   weekRunsSchema,
   reminderStateSchema,
+  competitionListSchema,
+  calendarPreviewSchema,
+  weekCompetitionsSchema,
   type Role,
   type Profile,
   type Session,
@@ -241,6 +244,23 @@ export const api = {
   reminder: () => request("/push/reminder", { method: "GET" }, reminderStateSchema),
   setReminder: (enabled: boolean, time: string) =>
     request("/push/reminder", json("PUT", { enabled, time }), reminderStateSchema),
+  competitions: (all = false) =>
+    request(`/competitions${all ? "?all=1" : ""}`, { method: "GET" }, competitionListSchema),
+  setGoing: (id: string, going: boolean) =>
+    request(`/competitions/${encodeURIComponent(id)}/going`, json("PUT", { going }), z.undefined()),
+  importCalendar: (file: File) => {
+    const form = new FormData();
+    form.append("file", file, "calendrier.docx");
+    return request("/competitions/import", { method: "POST", body: form }, calendarPreviewSchema);
+  },
+  saveCalendar: (preview: z.infer<typeof calendarPreviewSchema>) =>
+    request(
+      "/competitions/save",
+      json("POST", { season: preview.season, rows: preview.rows }),
+      z.object({ saved: z.number() }),
+    ),
+  weekCompetitions: (from: string, to: string) =>
+    request(`/week-competitions?${new URLSearchParams({ from, to })}`, { method: "GET" }, weekCompetitionsSchema),
   users: () => request("/admin/users", { method: "GET" }, z.array(adminUserSchema)),
   inviteUser: (email: string, role: Role) =>
     request("/admin/users", json("POST", { email, role }), inviteSchema),

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CATEGORY_CODES } from "./categories.js";
 
 /* ---------- Primitives ---------- */
 
@@ -82,6 +83,11 @@ export const profileSchema = z
     easyFast: paceSecSchema,
     easySlow: paceSecSchema,
     toleranceSec: z.number().int().min(0).max(30),
+    /** For the FFA category (Compétitions tab). */
+    birthDate: isoDateSchema
+      .refine((d) => d >= "1920-01-01" && d <= new Date().toISOString().slice(0, 10), "Date de naissance invalide")
+      .nullable()
+      .optional(),
   })
   .refine((p) => p.easyFast <= p.easySlow, {
     message: "L'allure footing rapide doit être plus rapide que la lente",
@@ -384,3 +390,42 @@ export const reminderSchema = z.object({
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Heure au format HH:MM"),
 });
 export const reminderStateSchema = reminderSchema.extend({ devices: z.number().int() });
+
+/* ---------- Competitions ---------- */
+
+export const competitionSchema = z.object({
+  id: uuidSchema,
+  season: z.string(),
+  startDate: isoDateSchema,
+  endDate: isoDateSchema,
+  title: z.string(),
+  place: z.string().nullable(),
+  categories: z.array(z.enum(CATEGORY_CODES)).nullable(),
+  myCategory: z.enum(CATEGORY_CODES).nullable(),
+  /** null: categories or birth date unknown. */
+  eligible: z.boolean().nullable(),
+  going: z.boolean(),
+});
+export type Competition = z.infer<typeof competitionSchema>;
+export const competitionListSchema = z.object({ birthDate: isoDateSchema.nullable(), items: z.array(competitionSchema) });
+export const goingSchema = z.object({ going: z.boolean() });
+
+export const calendarRowSchema = z.object({
+  startDate: isoDateSchema,
+  endDate: isoDateSchema,
+  title: z.string().trim().min(1).max(160),
+  place: z.string().trim().max(80).nullable(),
+  categories: z.array(z.enum(CATEGORY_CODES)).nullable(),
+});
+export const calendarPreviewSchema = z.object({
+  season: z.string().regex(/^\d{4}-\d{4}$/),
+  rows: z.array(calendarRowSchema),
+  skipped: z.number().int(),
+});
+export const calendarSaveSchema = z.object({
+  season: z.string().regex(/^\d{4}-\d{4}$/),
+  rows: z.array(calendarRowSchema).min(1).max(300),
+});
+export const weekCompetitionsSchema = z.array(
+  z.object({ id: uuidSchema, startDate: isoDateSchema, endDate: isoDateSchema, title: z.string(), place: z.string().nullable() }),
+);

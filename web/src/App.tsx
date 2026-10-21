@@ -2,13 +2,14 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { DEFAULT_PROFILE, type Profile } from "@shared/schemas";
 import { api, auth, isOffline, setLoggedOutHandler, type Me } from "./lib/api";
-import { IconCalendar, IconChart, IconImport, IconUser } from "./components/Icons";
+import { IconCalendar, IconChart, IconFlag, IconImport, IconUser } from "./components/Icons";
 import { Login } from "./pages/Login";
 import { Week } from "./pages/Week";
 import { Import } from "./pages/Import";
 import { SessionPage } from "./pages/SessionPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { Progress } from "./pages/Progress";
+import { Competitions } from "./pages/Competitions";
 
 interface AppState {
   email: string;
@@ -72,6 +73,7 @@ function SignedIn({ me, onLogout }: { me: Me; onLogout: () => void }) {
           <Route path="/seance/:id" element={<SessionPage />} />
           <Route path="/nouvelle/:date" element={<SessionPage />} />
           <Route path="/progression" element={<Progress />} />
+          <Route path="/competitions" element={<Competitions />} />
           <Route path="/profil" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -133,6 +135,10 @@ function Shell({ children }: { children: ReactNode }) {
         <NavLink to="/progression">
           <IconChart />
           Progrès
+        </NavLink>
+        <NavLink to="/competitions">
+          <IconFlag />
+          Compét.
         </NavLink>
         <NavLink to="/profil">
           <IconUser />

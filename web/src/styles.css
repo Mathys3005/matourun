@@ -439,6 +439,44 @@ rect.on { stroke: var(--white); stroke-width: 1.5; }
 .switch:checked { background: var(--viz-done); }
 .switch:checked::after { transform: translateX(20px); background: #ffffff; }
 
+/* ---------- Competitions ---------- */
+
+.race-hero { margin: 18px 0 18px; padding: 18px; border-radius: var(--radius-lg); background: var(--plum); display: grid; gap: 4px; box-shadow: inset 3px 0 0 var(--viz-done); }
+.race-hero-title { font: 600 30px/1.05 var(--display); }
+.race-hero-when { color: var(--muted); font-size: 14px; }
+.race-month h2 { text-transform: capitalize; margin: 22px 0 10px; }
+.races { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.race { display: flex; gap: 12px; align-items: center; background: var(--plum); border-radius: var(--radius-md); padding: 12px; }
+.race.going { box-shadow: inset 3px 0 0 var(--viz-done); }
+.race.past { opacity: 0.6; }
+.race-date { flex: none; width: 52px; text-align: center; display: grid; }
+.race-date strong { font: 600 24px/1 var(--display); }
+.race-date span { font-size: 12px; color: var(--muted); }
+.race-body { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.race-title { font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+.race-title::first-letter, .race-hero-title::first-letter, .race-chip strong::first-letter { text-transform: uppercase; }
+.race-chip strong { display: inline-block; }
+.race-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 13px; color: var(--muted); }
+.race-place { display: inline-flex; align-items: center; gap: 3px; }
+.race-place svg { width: 14px; height: 14px; }
+.race-tag { border: 1px solid var(--dusk); border-radius: 999px; padding: 0 8px; font-size: 12px; }
+.race-when { color: var(--lilac); }
+.race-warn { font-size: 12px; color: var(--warn); }
+.race-go {
+  flex: none; display: grid; justify-items: center; gap: 2px; border: 1px solid var(--dusk); background: transparent;
+  color: var(--muted); border-radius: var(--radius-md); padding: 8px 6px; min-width: 64px; font-size: 11px; font-weight: 600;
+}
+.race-go svg { width: 20px; height: 20px; }
+.race-go.on { background: var(--white); color: var(--night); border-color: var(--white); }
+.race-chip {
+  display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-radius: var(--radius-md); text-decoration: none;
+  background: var(--plum); box-shadow: inset 3px 0 0 var(--viz-done); font-size: 14px; color: var(--muted);
+}
+.race-chip svg { width: 18px; height: 18px; color: var(--viz-done); flex: none; }
+.race-chip strong { color: var(--text); }
+.file-btn input { display: none; }
+.tabbar a { font-size: 13px; padding: 9px 2px; }
+
 /* ---------- Themes ---------- */
 
 .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; }

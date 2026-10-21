@@ -84,3 +84,14 @@ export const IconAlert = () => (
     <path d="M12 10v4.5M12 17.5v.5" />
   </svg>
 );
+export const IconFlag = () => (
+  <svg {...base}>
+    <path d="M5 21V4M5 4h11l-2 4 2 4H5" />
+  </svg>
+);
+export const IconPin = () => (
+  <svg {...base}>
+    <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
+    <circle cx="12" cy="10" r="2.3" />
+  </svg>
+);

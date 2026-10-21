@@ -1,0 +1,511 @@
+{
+ "season": "2026-2027",
+ "source": "Calendrier saison automnale et hivernale 2026-27 du club",
+ "rows": [
+  {
+   "startDate": "2026-10-25",
+   "endDate": "2026-10-25",
+   "title": "Semi et marathon de Lille",
+   "place": "Lille",
+   "categories": [
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2026-11-08",
+   "endDate": "2026-11-08",
+   "title": "5km, 10km et semi Pont Audemer",
+   "place": "Pont Audemer",
+   "categories": [
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2026-11-11",
+   "endDate": "2026-11-11",
+   "title": "Cross challenge Carrington",
+   "place": "Louviers",
+   "categories": [
+    "BB",
+    "EA",
+    "PO",
+    "BE",
+    "MI",
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2026-11-13",
+   "endDate": "2026-11-13",
+   "title": "1ere soirée Jesse Owens salle",
+   "place": "Val de Reuil",
+   "categories": [
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2026-11-14",
+   "endDate": "2026-11-14",
+   "title": "Animation éveils",
+   "place": "Val de Reuil",
+   "categories": [
+    "EA"
+   ]
+  },
+  {
+   "startDate": "2026-11-14",
+   "endDate": "2026-11-14",
+   "title": "Epreuves ouvertes BM",
+   "place": "Val de Reuil",
+   "categories": [
+    "BE",
+    "MI"
+   ]
+  },
+  {
+   "startDate": "2026-11-22",
+   "endDate": "2026-11-22",
+   "title": "Cross de Vernon",
+   "place": "Vernon",
+   "categories": [
+    "BB",
+    "EA",
+    "PO",
+    "BE",
+    "MI",
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2026-11-27",
+   "endDate": "2026-11-27",
+   "title": "2e soirée Jesse Owens salle",
+   "place": "Val de Reuil",
+   "categories": [
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2026-11-28",
+   "endDate": "2026-11-28",
+   "title": "Animation poussins",
+   "place": "Val de Reuil",
+   "categories": [
+    "PO"
+   ]
+  },
+  {
+   "startDate": "2026-11-28",
+   "endDate": "2026-11-28",
+   "title": "Epreuves combinées 27 benj min",
+   "place": "Val de Reuil",
+   "categories": [
+    "BE",
+    "MI"
+   ]
+  },
+  {
+   "startDate": "2026-12-06",
+   "endDate": "2026-12-06",
+   "title": "Cross d’Evreux",
+   "place": "Evreux",
+   "categories": [
+    "EA",
+    "PO",
+    "BE",
+    "MI"
+   ]
+  },
+  {
+   "startDate": "2026-12-11",
+   "endDate": "2026-12-11",
+   "title": "3e soirée Jesse Owens salle",
+   "place": "Val de Reuil",
+   "categories": [
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2026-12-12",
+   "endDate": "2026-12-12",
+   "title": "Animation éveils et poussins",
+   "place": "Val de Reuil",
+   "categories": [
+    "EA",
+    "PO"
+   ]
+  },
+  {
+   "startDate": "2026-12-12",
+   "endDate": "2026-12-12",
+   "title": "Départementaux lancers longs",
+   "place": null,
+   "categories": [
+    "MI",
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2026-12-12",
+   "endDate": "2026-12-12",
+   "title": "régionaux relais cross",
+   "place": "Caen",
+   "categories": [
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2026-12-18",
+   "endDate": "2026-12-18",
+   "title": "4e soirée Jesse Owens salle",
+   "place": "Val de Reuil",
+   "categories": [
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2026-12-19",
+   "endDate": "2026-12-19",
+   "title": "France 5 km",
+   "place": "Vincennes",
+   "categories": [
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2026-12-19",
+   "endDate": "2026-12-19",
+   "title": "Départementaux 27 benj min",
+   "place": "Val de Reuil",
+   "categories": [
+    "BE",
+    "MI"
+   ]
+  },
+  {
+   "startDate": "2026-12-27",
+   "endDate": "2026-12-27",
+   "title": "Foulées des Andelys 5 et 10 km",
+   "place": "Les Andelys",
+   "categories": [
+    "MI",
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2027-01-03",
+   "endDate": "2027-01-03",
+   "title": "Pré régionaux",
+   "place": "Val de Reuil",
+   "categories": [
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2027-01-09",
+   "endDate": "2027-01-09",
+   "title": "Pré régionaux",
+   "place": "Val de Reuil",
+   "categories": [
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2027-01-10",
+   "endDate": "2027-01-10",
+   "title": "Départementaux de cross",
+   "place": "Ezy sur Eure",
+   "categories": [
+    "BB",
+    "EA",
+    "PO",
+    "BE",
+    "MI",
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2027-01-16",
+   "endDate": "2027-01-17",
+   "title": "Régionaux élite",
+   "place": "Val de Reuil",
+   "categories": [
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2027-01-22",
+   "endDate": "2027-01-22",
+   "title": "5e soirée Jesse Owens salle",
+   "place": "Val de Reuil",
+   "categories": [
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2027-01-23",
+   "endDate": "2027-01-24",
+   "title": "Pré France EC",
+   "place": "Rennes",
+   "categories": [
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2027-01-24",
+   "endDate": "2027-01-24",
+   "title": "Régionaux de cross",
+   "place": "Flers",
+   "categories": [
+    "BE",
+    "MI",
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2027-01-30",
+   "endDate": "2027-01-30",
+   "title": "Meeting de l’Eure",
+   "place": "Val de Reuil",
+   "categories": null
+  },
+  {
+   "startDate": "2027-01-31",
+   "endDate": "2027-01-31",
+   "title": "Régionaux combinés benj min",
+   "place": "Mondeville",
+   "categories": [
+    "BE",
+    "MI"
+   ]
+  },
+  {
+   "startDate": "2027-02-06",
+   "endDate": "2027-02-06",
+   "title": "régionaux masters",
+   "place": "Mondeville",
+   "categories": [
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2027-02-06",
+   "endDate": "2027-02-07",
+   "title": "France combinés et Marche",
+   "place": null,
+   "categories": [
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2027-02-07",
+   "endDate": "2027-02-07",
+   "title": "½ finale des Frances de cross + intercomités",
+   "place": "Merdrignac",
+   "categories": [
+    "MI",
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2027-02-13",
+   "endDate": "2027-02-13",
+   "title": "Régionaux minimes",
+   "place": "Val de Reuil",
+   "categories": [
+    "MI"
+   ]
+  },
+  {
+   "startDate": "2027-02-13",
+   "endDate": "2027-02-13",
+   "title": "Animation éveils poussins",
+   "place": "Val de Reuil",
+   "categories": [
+    "EA",
+    "PO"
+   ]
+  },
+  {
+   "startDate": "2027-02-13",
+   "endDate": "2027-02-14",
+   "title": "France U18 & U20",
+   "place": "Nantes",
+   "categories": [
+    "CA",
+    "JU"
+   ]
+  },
+  {
+   "startDate": "2027-02-27",
+   "endDate": "2027-02-28",
+   "title": "France lancers longs",
+   "place": null,
+   "categories": [
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2027-02-27",
+   "endDate": "2027-02-28",
+   "title": "France de cross + interligues minimes",
+   "place": "Sarrebourg",
+   "categories": [
+    "MI",
+    "CA",
+    "JU",
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2027-03-06",
+   "endDate": "2027-03-07",
+   "title": "France U23 et nationaux",
+   "place": "Limoges",
+   "categories": [
+    "ES",
+    "SE",
+    "MA"
+   ]
+  },
+  {
+   "startDate": "2027-03-13",
+   "endDate": "2027-03-13",
+   "title": "Régionaux benjamins",
+   "place": "Val de Reuil",
+   "categories": [
+    "BE"
+   ]
+  },
+  {
+   "startDate": "2027-03-14",
+   "endDate": "2027-03-14",
+   "title": "Interligues",
+   "place": null,
+   "categories": [
+    "MI"
+   ]
+  },
+  {
+   "startDate": "2027-03-20",
+   "endDate": "2027-03-20",
+   "title": "Animation éveils poussins",
+   "place": null,
+   "categories": [
+    "EA",
+    "PO"
+   ]
+  },
+  {
+   "startDate": "2027-03-21",
+   "endDate": "2027-03-21",
+   "title": "Intercomités",
+   "place": "Mondeville",
+   "categories": [
+    "BE",
+    "MI"
+   ]
+  },
+  {
+   "startDate": "2027-04-04",
+   "endDate": "2027-04-04",
+   "title": "Vernon tout court",
+   "place": "Vernon",
+   "categories": [
+    "MI",
+    "CA",
+    "JU",
+    "ES",
+    "SE"
+   ]
+  }
+ ]
+}

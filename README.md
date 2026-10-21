@@ -10,7 +10,8 @@ Calendrier d'entraînement de course à pied, pensé pour le téléphone :
 - l'import accepte la **capture** ou le **texte** du message du club ;
 - **rappels** : une notification le matin des jours de séance (Profil → Rappels ; sur iPhone, depuis l'icône de l'écran d'accueil) ;
 - **hors ligne** : la dernière semaine consultée reste lisible sans réseau ;
-- **thèmes** : Violet nuit, Océan, Forêt, Braise, Clair (Profil → Apparence).
+- **thèmes** : Violet nuit, Océan, Forêt, Braise, Clair (Profil → Apparence) ;
+- l'onglet **Compét.** affiche le calendrier des compétitions du club filtré sur ta catégorie FFA, calculée à partir de ta date de naissance (Profil) à la date de chaque épreuve : la saison change le 1er septembre, la catégorie suit l'année de naissance (barème athle.fr). « J'y vais » ajoute la course à ta semaine et envoie une notification le jour J. La saison 2026-2027 est préchargée ; un administrateur importe les saisons suivantes depuis le fichier Word du club (tableau Date / Intitulé / Cat / Lieux, codes EA, P, B, M, C, J, E, S, Ma ou « Toutes »).
 
 ## Déploiement (Render + Neon, gratuit)
 

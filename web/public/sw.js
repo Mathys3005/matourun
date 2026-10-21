@@ -1,8 +1,8 @@
 /* MatouRun service worker: offline reading and push reminders. */
 const SHELL = "mr-shell-v2";
-const API = "mr-api-v1";
+const API = "mr-api-v2";
 /** Read-only API responses kept for offline use (never auth routes). */
-const API_CACHEABLE = /^\/api\/(sessions|runs|profile|config|progress)(\/|\?|$)/;
+const API_CACHEABLE = /^\/api\/(sessions|runs|profile|config|progress|competitions|week-competitions)(\/|\?|$)/;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
