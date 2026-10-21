@@ -37,23 +37,68 @@ function decrypt(blob: string) {
   return Buffer.concat([d.update(data!), d.final()]).toString("utf8");
 }
 
-/** Turns a sign-in failure into a precise message, and logs the details for Render's logs. */
-function loginError(err: unknown): HttpError {
-  const e = err as { message?: string; response?: { status?: number; data?: unknown } };
-  const status = e?.response?.status;
-  const message = e?.message ?? String(err);
-  const body = typeof e?.response?.data === "string" ? e.response.data.slice(0, 200) : "";
-  console.error("[garmin] login failed", { status, message, body });
-  if (status === 429)
-    return new HttpError(502, "Garmin limite les connexions depuis le serveur (429). Réessaie dans une heure.");
-  if (status === 403)
-    return new HttpError(502, "Garmin bloque les connexions depuis le serveur (403).");
+/** HTTP status of a Garmin failure (axios error, or the library's "ERROR: (429), …" message). */
+function statusOf(err: unknown): number | undefined {
+  const e = err as { message?: string; response?: { status?: number } };
+  if (e?.response?.status) return e.response.status;
+  const m = /ERROR: \((\d{3})\)/.exec(e?.message ?? "");
+  return m ? Number(m[1]) : undefined;
+}
+
+/* After a failed sign-in, no new attempt is made until the cooldown ends: retrying
+   in bursts is what gets the server's address blocked by Garmin (Cloudflare 1015).
+   Stored in the database so a restart of the server doesn't reset it. */
+const COOLDOWN_KEY = "garmin_cooldown_until";
+const RATE_LIMIT_COOLDOWN_MIN = 60;
+const OTHER_COOLDOWN_MIN = 10;
+
+const hhmm = (ms: number) =>
+  new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }).format(ms);
+
+async function cooldownUntil(): Promise<number> {
+  const { rows } = await q<{ value: string }>(`SELECT value FROM app_secrets WHERE key = $1`, [COOLDOWN_KEY]);
+  return Number(rows[0]?.value ?? 0) || 0;
+}
+
+async function startCooldown(minutes: number): Promise<number> {
+  const until = Date.now() + minutes * 60_000;
+  await q(
+    `INSERT INTO app_secrets (key, value, updated_at) VALUES ($1, $2, now())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+    [COOLDOWN_KEY, String(until)],
+  );
+  return until;
+}
+
+async function assertNoCooldown() {
+  const until = await cooldownUntil();
+  if (until > Date.now()) {
+    throw new HttpError(
+      429,
+      `Garmin limite les connexions depuis le serveur. Nouvel essai possible à ${hhmm(until)}.`,
+    );
+  }
+}
+
+/** Turns a sign-in failure into a precise message, logs it, and starts the cooldown. */
+async function loginError(err: unknown): Promise<HttpError> {
+  const status = statusOf(err);
+  const message = (err as { message?: string })?.message ?? String(err);
+  console.error("[garmin] login failed", { status, message: message.slice(0, 300) });
+  if (status === 429 || /rate.?limit|1015/i.test(message)) {
+    const until = await startCooldown(RATE_LIMIT_COOLDOWN_MIN);
+    return new HttpError(
+      429,
+      `Garmin limite les connexions depuis le serveur. Nouvel essai possible à ${hhmm(until)}.`,
+    );
+  }
+  await startCooldown(OTHER_COOLDOWN_MIN);
+  if (status === 403) return new HttpError(502, "Garmin bloque les connexions depuis le serveur (403).");
   if (/MFA|Ticket not found/i.test(message))
     return new HttpError(502, "Garmin a refusé l'identifiant ou le mot de passe, ou demande une double authentification.");
   if (/AccountLocked/i.test(message))
     return new HttpError(502, "Compte Garmin verrouillé : ouvre connect.garmin.com pour le débloquer.");
-  if (/csrf/i.test(message))
-    return new HttpError(502, "La page de connexion Garmin a changé (csrf introuvable).");
+  if (/csrf/i.test(message)) return new HttpError(502, "La page de connexion Garmin a changé (csrf introuvable).");
   return new HttpError(502, `Connexion Garmin impossible (${status ?? message.slice(0, 80)})`);
 }
 
@@ -75,21 +120,38 @@ async function connect(): Promise<GC> {
     throw new HttpError(503, "Identifiants Garmin non configurés sur le serveur");
   }
   const gc = new GarminConnect({ username: e.GARMIN_EMAIL, password: e.GARMIN_PASSWORD });
+
+  // Saved tokens first: a valid token means no sign-in at all.
   const { rows } = await q<{ value: string }>(`SELECT value FROM app_secrets WHERE key = $1`, [TOKEN_KEY]);
   if (rows[0]) {
+    let tokens: { oauth1: unknown; oauth2: unknown } | null = null;
     try {
-      const t = JSON.parse(decrypt(rows[0].value)) as { oauth1: unknown; oauth2: unknown };
-      gc.loadToken(t.oauth1, t.oauth2);
-      await gc.get(`${API}/userprofile-service/socialProfile`);
-      return gc;
+      tokens = JSON.parse(decrypt(rows[0].value));
     } catch {
-      // Tokens unusable: fall through to a fresh sign-in.
+      tokens = null;
+    }
+    if (tokens) {
+      try {
+        gc.loadToken(tokens.oauth1, tokens.oauth2);
+        await gc.get(`${API}/userprofile-service/socialProfile`);
+        await saveTokens(gc); // keeps a refreshed access token
+        return gc;
+      } catch (err) {
+        const status = statusOf(err);
+        // Only a rejected token justifies signing in again; anything else (429, network) is temporary.
+        if (status !== 401 && status !== 403) {
+          console.error("[garmin] token check failed", { status });
+          throw new HttpError(status === 429 ? 429 : 502, "Garmin est momentanément indisponible, réessaie plus tard.");
+        }
+      }
     }
   }
+
+  await assertNoCooldown();
   try {
     await gc.login();
   } catch (err) {
-    throw loginError(err);
+    throw await loginError(err);
   }
   await saveTokens(gc);
   return gc;
@@ -110,13 +172,15 @@ async function withGarmin<T>(fn: (g: GC) => Promise<T>): Promise<T> {
     await saveTokens(g).catch(() => undefined);
     return r;
   } catch (err) {
-    const status = (err as { response?: { status?: number } })?.response?.status;
+    if (err instanceof HttpError) throw err;
+    const status = statusOf(err);
     if (status === 401 || status === 403) {
       client = null;
       await q(`DELETE FROM app_secrets WHERE key = $1`, [TOKEN_KEY]);
       return fn(await gc());
     }
-    if (err instanceof HttpError) throw err;
+    console.error("[garmin] request failed", { status });
+    if (status === 429) throw new HttpError(429, "Garmin limite les requêtes, réessaie dans quelques minutes.");
     throw new HttpError(502, "Garmin a refusé la requête");
   }
 }
