@@ -4,6 +4,7 @@ import gcPkg from "garmin-connect";
 import { env } from "../env.js";
 import { q } from "../db.js";
 import { HttpError } from "../middleware/security.js";
+import { open, seal } from "./secretBox.js";
 
 const { GarminConnect } = gcPkg as unknown as { GarminConnect: new (c?: unknown) => GC };
 
@@ -20,23 +21,9 @@ interface GC {
 const API = "https://connectapi.garmin.com";
 const TOKEN_KEY = "garmin_tokens";
 
-/* Garmin OAuth tokens are stored encrypted (AES-256-GCM) so the account isn't
-   signed in again on every cold start. */
-function key() {
-  return crypto.createHash("sha256").update(`garmin-tokens:${env().JWT_SECRET}`).digest();
-}
-function encrypt(text: string) {
-  const iv = crypto.randomBytes(12);
-  const c = crypto.createCipheriv("aes-256-gcm", key(), iv);
-  const data = Buffer.concat([c.update(text, "utf8"), c.final()]);
-  return [iv, c.getAuthTag(), data].map((b) => b.toString("base64")).join(".");
-}
-function decrypt(blob: string) {
-  const [iv, tag, data] = blob.split(".").map((p) => Buffer.from(p, "base64"));
-  const d = crypto.createDecipheriv("aes-256-gcm", key(), iv!);
-  d.setAuthTag(tag!);
-  return Buffer.concat([d.update(data!), d.final()]).toString("utf8");
-}
+/* Garmin OAuth tokens are stored encrypted so the account isn't signed in again on every cold start. */
+const encrypt = (text: string) => seal("garmin-tokens", text);
+const decrypt = (blob: string) => open("garmin-tokens", blob);
 
 /** HTTP status of a Garmin failure (axios error, or the library's "ERROR: (429), …" message). */
 function statusOf(err: unknown): number | undefined {
@@ -265,6 +252,14 @@ export async function listActivities(start: number, limit: number): Promise<unkn
 export async function getSplits(activityId: string): Promise<unknown> {
   if (!/^\d+$/.test(activityId)) throw new HttpError(400, "Activité invalide");
   return withGarmin((g) => g.get<unknown>(`${API}/activity-service/activity/${activityId}/splits`));
+}
+
+/** Moves an already scheduled workout to another day of the Garmin calendar. */
+export async function rescheduleWorkout(workoutId: string, oldScheduleId: string | null, date: string) {
+  if (oldScheduleId && /^\d+$/.test(oldScheduleId)) {
+    await withGarmin((g) => g.client.delete(`${API}/workout-service/schedule/${oldScheduleId}`)).catch(() => undefined);
+  }
+  return scheduleWorkout(workoutId, date);
 }
 
 /** Deleting the workout also removes it from the Garmin calendar. */

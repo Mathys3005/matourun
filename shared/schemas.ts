@@ -183,11 +183,31 @@ export const importOptionsSchema = z.object({
   group: z.string().trim().max(40).default(""),
 });
 
+export const importTextSchema = z.object({
+  text: z.string().trim().min(10, "Colle le message du club").max(4000, "Message trop long (4000 caractères max)"),
+  startDate: isoDateSchema,
+  group: z.string().trim().max(40).default(""),
+});
+
 export const saveImportSchema = z.object({
   sessions: z.array(sessionInputSchema).min(1).max(14),
 });
 
 export const weekQuerySchema = z.object({ from: isoDateSchema, to: isoDateSchema });
+
+export const moveSessionSchema = z.object({ date: isoDateSchema });
+
+export const dayRunSchema = z.object({
+  id: z.string(),
+  date: isoDateSchema,
+  name: z.string(),
+  km: z.number(),
+  durationSec: z.number(),
+  paceSec: z.number().nullable(),
+  avgHr: z.number().nullable(),
+});
+export type DayRun = z.infer<typeof dayRunSchema>;
+export const weekRunsSchema = z.object({ runs: z.array(dayRunSchema), hasActivities: z.boolean() });
 
 export const exportWeekSchema = z.object({ from: isoDateSchema, to: isoDateSchema });
 
@@ -343,7 +363,24 @@ export const progressSchema = z.object({
   zones: z.array(progressZoneSchema),
   /** Runs whose laps are not imported yet (fetched a few dozen per sync). */
   lapsPending: z.number().int(),
+  alerts: z.array(z.object({ kind: z.enum(["volume", "fatigue"]), title: z.string(), detail: z.string() })),
 });
 export type Progress = z.infer<typeof progressSchema>;
 
 export const syncResultSchema = z.object({ added: z.number().int(), total: z.number().int(), lastSyncAt: z.string() });
+
+/* ---------- Push & reminders ---------- */
+
+export const pushSubscriptionSchema = z.object({
+  endpoint: z.string().url().max(1000),
+  keys: z.object({
+    p256dh: z.string().min(20).max(200),
+    auth: z.string().min(8).max(100),
+  }),
+});
+export const unsubscribeSchema = z.object({ endpoint: z.string().url().max(1000) });
+export const reminderSchema = z.object({
+  enabled: z.boolean(),
+  time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Heure au format HH:MM"),
+});
+export const reminderStateSchema = reminderSchema.extend({ devices: z.number().int() });

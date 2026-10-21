@@ -109,6 +109,21 @@ const MIGRATIONS: string[] = [
      PRIMARY KEY (user_id, garmin_id, lap_index),
      FOREIGN KEY (user_id, garmin_id) REFERENCES activities(user_id, garmin_id) ON DELETE CASCADE
    )`,
+  // Web push: one row per device, and each person's morning reminder.
+  `CREATE TABLE IF NOT EXISTS push_subscriptions (
+     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     endpoint text NOT NULL UNIQUE,
+     p256dh text NOT NULL,
+     auth text NOT NULL,
+     created_at timestamptz NOT NULL DEFAULT now()
+   )`,
+  `CREATE TABLE IF NOT EXISTS reminders (
+     user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+     enabled boolean NOT NULL DEFAULT false,
+     time text NOT NULL DEFAULT '07:30',
+     last_sent date
+   )`,
   `CREATE TABLE IF NOT EXISTS app_secrets (
      key text PRIMARY KEY,
      value text NOT NULL,

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { DEFAULT_PROFILE, type Profile } from "@shared/schemas";
-import { api, auth, setLoggedOutHandler, type Me } from "./lib/api";
+import { api, auth, isOffline, setLoggedOutHandler, type Me } from "./lib/api";
 import { IconCalendar, IconChart, IconImport, IconUser } from "./components/Icons";
 import { Login } from "./pages/Login";
 import { Week } from "./pages/Week";
@@ -85,10 +85,31 @@ function SignedIn({ me, onLogout }: { me: Me; onLogout: () => void }) {
   );
 }
 
+function useOnline() {
+  const [online, setOnline] = useState(() => navigator.onLine && !isOffline());
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+  return online;
+}
+
 function Shell({ children }: { children: ReactNode }) {
   const location = useLocation();
+  const online = useOnline();
   return (
     <>
+      {!online && (
+        <div className="offline-bar" role="status">
+          Hors ligne : tu vois les données de ta dernière visite. Les modifications reviendront avec le réseau.
+        </div>
+      )}
       <main className="shell">
         <header className="topbar">
           <Link to="/" className="brand" aria-label="MatouRun, accueil">

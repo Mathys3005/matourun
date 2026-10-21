@@ -4,6 +4,8 @@ import rateLimit from "express-rate-limit";
 import {
   exportWeekSchema,
   importOptionsSchema,
+  importTextSchema,
+  moveSessionSchema,
   profileSchema,
   saveImportSchema,
   sessionInputSchema,
@@ -12,11 +14,13 @@ import {
 } from "../../../shared/schemas.js";
 import { HttpError, asyncH, requireAuth } from "../middleware/security.js";
 import * as store from "../lib/store.js";
-import { parsePlanImage, sniffImage } from "../lib/parsePlan.js";
+import { parsePlanImage, parsePlanText, sniffImage } from "../lib/parsePlan.js";
 import { buildGarminWorkout } from "../lib/garminWorkout.js";
 import * as garmin from "../lib/garminClient.js";
 import { adminRouter } from "./admin.js";
 import { progressRouter } from "./progress.js";
+import { pushRouter } from "./push.js";
+import { listRuns } from "../lib/progress.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -42,6 +46,7 @@ export const apiRouter = Router();
 apiRouter.use(requireAuth);
 apiRouter.use("/admin", adminRouter);
 apiRouter.use("/progress", progressRouter);
+apiRouter.use("/push", pushRouter);
 
 apiRouter.get("/config", (_req, res) => {
   res.json({ garmin: garmin.garminConfigured() });
@@ -103,6 +108,39 @@ apiRouter.put(
   }),
 );
 
+/** Moves a session to another day (drag and drop), and its Garmin calendar entry with it. */
+apiRouter.patch(
+  "/sessions/:id/date",
+  asyncH(async (req, res) => {
+    const id = uuidSchema.parse(req.params.id);
+    const { date } = moveSessionSchema.parse(req.body);
+    const before = await store.getGarminIds(req.user!.id, id);
+    const moved = await store.moveSession(req.user!.id, id, date);
+    if (!moved) throw new HttpError(404, "Séance introuvable");
+    let garminStatus: "none" | "moved" | "failed" = "none";
+    if (before?.garmin_workout_id && moved.session.exportedAt && garmin.garminConfigured()) {
+      try {
+        const scheduleId = await garmin.rescheduleWorkout(before.garmin_workout_id, moved.scheduleId, date);
+        await store.markExported(req.user!.id, id, before.garmin_workout_id, scheduleId);
+        garminStatus = "moved";
+      } catch {
+        await store.clearExport(req.user!.id, id);
+        garminStatus = "failed";
+      }
+    }
+    res.json({ session: await store.getSession(req.user!.id, id), garmin: garminStatus });
+  }),
+);
+
+apiRouter.get(
+  "/runs",
+  asyncH(async (req, res) => {
+    const { from, to } = weekQuerySchema.parse(req.query);
+    checkRange(from, to);
+    res.json(await listRuns(req.user!.id, from, to));
+  }),
+);
+
 apiRouter.delete(
   "/sessions/:id",
   asyncH(async (req, res) => {
@@ -128,6 +166,22 @@ apiRouter.post(
     if (!mime) throw new HttpError(415, "Format d'image non pris en charge (JPEG, PNG ou WebP)");
     const sessions = await parsePlanImage(req.file.buffer, mime, opts.group);
     // Default: one session per day from the start date; the user can move them.
+    const start = Date.parse(opts.startDate + "T00:00:00Z");
+    res.json({
+      sessions: sessions.map((s, i) => ({
+        ...s,
+        date: new Date(start + i * 86_400_000).toISOString().slice(0, 10),
+      })),
+    });
+  }),
+);
+
+apiRouter.post(
+  "/import/parse-text",
+  heavyLimiter,
+  asyncH(async (req, res) => {
+    const opts = importTextSchema.parse(req.body);
+    const sessions = await parsePlanText(opts.text, opts.group);
     const start = Date.parse(opts.startDate + "T00:00:00Z");
     res.json({
       sessions: sessions.map((s, i) => ({

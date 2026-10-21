@@ -20,6 +20,8 @@ const envSchema = z.object({
   GARMIN_TOKENS: z.string().optional(),
   GARMIN_EMAIL: z.string().optional(),
   GARMIN_PASSWORD: z.string().optional(),
+  /** Public URL pinged every 10 min to keep a free instance awake (defaults to RENDER_EXTERNAL_URL). */
+  KEEP_ALIVE_URL: z.string().url().optional(),
   TRUST_PROXY: z.coerce.number().int().min(0).default(1),
 });
 

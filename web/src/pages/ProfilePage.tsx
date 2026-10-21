@@ -3,6 +3,8 @@ import { formatPace, parsePace, profileSchema, type Profile } from "@shared/sche
 import { api } from "../lib/api";
 import { useApp } from "../App";
 import { AccessAdmin } from "../components/AccessAdmin";
+import { ThemePicker } from "../components/ThemePicker";
+import { Reminders } from "../components/Reminders";
 
 const FIELDS: Array<{ key: keyof Profile; label: string }> = [
   { key: "pace5k", label: "Allure 5 km" },
@@ -84,6 +86,10 @@ export function ProfilePage() {
       <button className="btn block" disabled={busy} onClick={save}>
         {busy ? <span className="spinner" /> : "Enregistrer mes allures"}
       </button>
+
+      <Reminders />
+
+      <ThemePicker />
 
       {isAdmin && <AccessAdmin />}
 

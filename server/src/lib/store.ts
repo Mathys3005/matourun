@@ -85,6 +85,21 @@ export async function updateSession(userId: string, id: string, s: SessionInput)
   return rows[0] ? toSession(rows[0]) : null;
 }
 
+/** Moves a session to another day; its Garmin export is kept (rescheduled by the caller). */
+export async function moveSession(userId: string, id: string, date: string) {
+  const { rows } = await q<Row & { garmin_schedule_id: string | null }>(
+    `UPDATE sessions SET date = $3, updated_at = now()
+      WHERE user_id = $1 AND id = $2 RETURNING ${COLS}, garmin_schedule_id`,
+    [userId, id, date],
+  );
+  const r = rows[0];
+  return r ? { session: toSession(r), scheduleId: r.garmin_schedule_id } : null;
+}
+
+export async function clearExport(userId: string, id: string) {
+  await q(`UPDATE sessions SET exported_at = NULL WHERE user_id = $1 AND id = $2`, [userId, id]);
+}
+
 export async function deleteSession(userId: string, id: string) {
   const { rows } = await q<{ garmin_workout_id: string | null }>(
     `DELETE FROM sessions WHERE user_id = $1 AND id = $2 RETURNING garmin_workout_id`,

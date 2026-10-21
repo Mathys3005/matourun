@@ -10,6 +10,8 @@ import {
   inviteSchema,
   progressSchema,
   syncResultSchema,
+  weekRunsSchema,
+  reminderStateSchema,
   type Role,
   type Profile,
   type Session,
@@ -58,9 +60,32 @@ async function readError(res: Response): Promise<ApiError> {
   return new ApiError(res.status, detail ? `${data?.error} : ${detail}` : (data?.error ?? "Erreur réseau"));
 }
 
+/* Offline: the refresh call can't reach the server. The app then shows the data the
+   service worker cached at the last visit, read-only. */
+let offline = false;
+export const isOffline = () => offline;
+const ME_KEY = "mr_me";
+
+function rememberMe(me: Me) {
+  try {
+    localStorage.setItem(ME_KEY, JSON.stringify(me));
+  } catch {
+    /* storage unavailable */
+  }
+}
+function cachedMe(): Me | null {
+  try {
+    const parsed = meSchema.safeParse(JSON.parse(localStorage.getItem(ME_KEY) ?? "null"));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function refresh(): Promise<string | null> {
   refreshing ??= (async () => {
     const res = await authPost("refresh").catch(() => null);
+    offline = res === null;
     if (!res?.ok) {
       accessToken = null;
       return false;
@@ -82,13 +107,19 @@ async function request<T>(path: string, init: RequestInit, schema: z.ZodType<T, 
         ...init.headers,
       },
     });
-  let res = await send();
+  const OFFLINE_MSG = "Hors ligne : réessaie quand tu auras du réseau";
+  let res = await send().catch(() => {
+    throw new ApiError(0, OFFLINE_MSG);
+  });
   if (res.status === 401) {
     if (!(await refresh())) {
+      if (offline) throw new ApiError(0, OFFLINE_MSG);
       onLoggedOut();
       throw new ApiError(401, "Session expirée");
     }
-    res = await send();
+    res = await send().catch(() => {
+      throw new ApiError(0, OFFLINE_MSG);
+    });
   }
   if (!res.ok) throw await readError(res);
   if (res.status === 204) return schema.parse(undefined);
@@ -114,6 +145,7 @@ export const auth = {
     if (!res.ok) throw await readError(res);
     const s = sessionResponse.parse(await res.json());
     accessToken = s.accessToken;
+    rememberMe({ email: s.email, role: s.role });
     return { email: s.email, role: s.role } as Me;
   },
   async setup(email: string, password: string, setupCode: string) {
@@ -121,15 +153,27 @@ export const auth = {
     if (!res.ok) throw await readError(res);
     const s = sessionResponse.parse(await res.json());
     accessToken = s.accessToken;
+    rememberMe({ email: s.email, role: s.role });
     return { email: s.email, role: s.role } as Me;
   },
   async logout() {
     await authPost("logout").catch(() => null);
     accessToken = null;
+    try {
+      localStorage.removeItem(ME_KEY);
+    } catch {
+      /* storage unavailable */
+    }
+    // Forget the API responses cached for offline use.
+    navigator.serviceWorker?.controller?.postMessage({ type: "logout" });
   },
   async resume(): Promise<Me | null> {
-    if (!(await refresh())) return null;
-    return request("/auth/me", { method: "GET" }, meSchema);
+    if (await refresh()) {
+      const me = await request("/auth/me", { method: "GET" }, meSchema);
+      rememberMe(me);
+      return me;
+    }
+    return offline ? cachedMe() : null;
   },
 };
 
@@ -152,6 +196,14 @@ export const api = {
   createSession: (s: SessionInput) => request("/sessions", json("POST", s), sessionSchema),
   updateSession: (id: string, s: SessionInput) =>
     request(`/sessions/${encodeURIComponent(id)}`, json("PUT", s), sessionSchema),
+  moveSession: (id: string, date: string) =>
+    request(
+      `/sessions/${encodeURIComponent(id)}/date`,
+      json("PATCH", { date }),
+      z.object({ session: sessionSchema, garmin: z.enum(["none", "moved", "failed"]) }),
+    ),
+  runs: (from: string, to: string) =>
+    request(`/runs?${new URLSearchParams({ from, to })}`, { method: "GET" }, weekRunsSchema),
   deleteSession: (id: string) =>
     request(`/sessions/${encodeURIComponent(id)}`, { method: "DELETE" }, z.undefined()),
   parseImport: (image: Blob, startDate: string, group: string) => {
@@ -165,6 +217,12 @@ export const api = {
       z.object({ sessions: z.array(datedParsed) }),
     );
   },
+  parseImportText: (text: string, startDate: string, group: string) =>
+    request(
+      "/import/parse-text",
+      json("POST", { text, startDate, group }),
+      z.object({ sessions: z.array(datedParsed) }),
+    ),
   saveImport: (sessions: SessionInput[]) =>
     request("/import/save", json("POST", { sessions }), z.array(sessionSchema)),
   exportSession: (id: string) =>
@@ -176,6 +234,13 @@ export const api = {
   progress: (weeks: number) =>
     request(`/progress?${new URLSearchParams({ weeks: String(weeks) })}`, { method: "GET" }, progressSchema),
   syncProgress: () => request("/progress/sync", json("POST"), syncResultSchema),
+  pushKey: () => request("/push/key", { method: "GET" }, z.object({ publicKey: z.string() })),
+  pushSubscribe: (sub: PushSubscriptionJSON) => request("/push/subscribe", json("POST", sub), z.undefined()),
+  pushUnsubscribe: (endpoint: string) => request("/push/unsubscribe", json("POST", { endpoint }), z.undefined()),
+  pushTest: () => request("/push/test", json("POST"), z.object({ sent: z.number() })),
+  reminder: () => request("/push/reminder", { method: "GET" }, reminderStateSchema),
+  setReminder: (enabled: boolean, time: string) =>
+    request("/push/reminder", json("PUT", { enabled, time }), reminderStateSchema),
   users: () => request("/admin/users", { method: "GET" }, z.array(adminUserSchema)),
   inviteUser: (email: string, role: Role) =>
     request("/admin/users", json("POST", { email, role }), inviteSchema),

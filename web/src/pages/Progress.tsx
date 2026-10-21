@@ -4,7 +4,7 @@ import { api } from "../lib/api";
 import { fromIso } from "../lib/dates";
 import { useApp } from "../App";
 import { Consistency, PaceTrend, WeeklyDistance, shortDay } from "../components/charts";
-import { IconSync } from "../components/Icons";
+import { IconAlert, IconSync } from "../components/Icons";
 import { ZoneEvolution } from "../components/ZoneEvolution";
 
 const RANGES = [
@@ -154,6 +154,16 @@ export function Progress() {
               </div>
             </div>
           </section>
+
+          {data.alerts.map((a) => (
+            <div key={a.kind} className="alert" role="note">
+              <IconAlert />
+              <div>
+                <strong>{a.title}</strong>
+                <p>{a.detail}</p>
+              </div>
+            </div>
+          ))}
 
           {!data.sync.hasActivities && (
             <div className="panel note">

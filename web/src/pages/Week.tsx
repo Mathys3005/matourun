@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { estimate, isoDateSchema, type Session } from "@shared/schemas";
+import { estimate, formatPace, isoDateSchema, type DayRun, type Session } from "@shared/schemas";
 import { api } from "../lib/api";
 import { addDays, dayNumber, mondayOf, shortDate, today, weekdayShort } from "../lib/dates";
 import { sessionSummary } from "../lib/describe";
 import { useApp } from "../App";
 import { ProfileBar } from "../components/ProfileBar";
 import { IconCheck, IconLeft, IconRight, IconSync, IconWatch } from "../components/Icons";
+import { useDragToDay } from "../lib/useDragToDay";
+
+const km1 = (n: number) => n.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
+const runText = (r: DayRun) => `${km1(r.km)} km${r.paceSec ? ` à ${formatPace(r.paceSec)} /km` : ""}`;
 
 export function Week() {
   const params = useParams();
@@ -17,6 +21,7 @@ export function Week() {
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(monday, i)), [monday]);
 
   const [sessions, setSessions] = useState<Session[] | null>(null);
+  const [runs, setRuns] = useState<{ runs: DayRun[]; hasActivities: boolean }>({ runs: [], hasActivities: false });
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [weekBusy, setWeekBusy] = useState(false);
 
@@ -25,7 +30,28 @@ export function Week() {
       setSessions([]);
       toast(e.message, true);
     });
+    api.runs(monday, sunday).then(setRuns, () => undefined);
   }, [monday, sunday, toast]);
+
+  const move = useCallback(
+    async (id: string, day: string) => {
+      const before = sessions;
+      setSessions((list) => list?.map((x) => (x.id === id ? { ...x, date: day } : x)) ?? list);
+      try {
+        const r = await api.moveSession(id, day);
+        setSessions((list) => list?.map((x) => (x.id === id ? r.session : x)) ?? list);
+        if (r.garmin === "moved") toast("Séance déplacée, calendrier Garmin mis à jour");
+        else if (r.garmin === "failed") toast("Séance déplacée. Garmin n'a pas suivi : renvoie-la sur la montre", true);
+        else toast("Séance déplacée");
+        if (day < monday || day > sunday) load();
+      } catch (e) {
+        setSessions(before);
+        toast((e as Error).message, true);
+      }
+    },
+    [sessions, toast, load, monday, sunday],
+  );
+  const { drag, bind } = useDragToDay(move);
 
   useEffect(() => {
     setSessions(null);
@@ -106,10 +132,17 @@ export function Week() {
           <strong>{totals.km.toLocaleString("fr-FR", { maximumFractionDigits: 1 })}</strong>
           <span>km prévus</span>
         </div>
-        <div className="stat">
-          <strong>{totals.hours.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} h</strong>
-          <span>de course</span>
-        </div>
+        {runs.hasActivities ? (
+          <div className="stat">
+            <strong>{km1(runs.runs.reduce((t, r) => t + r.km, 0))}</strong>
+            <span>km faits</span>
+          </div>
+        ) : (
+          <div className="stat">
+            <strong>{totals.hours.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} h</strong>
+            <span>de course</span>
+          </div>
+        )}
         <div className="stat">
           <strong>
             {totals.exported}/{totals.count}
@@ -122,28 +155,46 @@ export function Week() {
         <p className="panel note">L'export Garmin n'est pas encore configuré sur le serveur (identifiants Garmin manquants).</p>
       )}
 
-      <div className="days">
+      {!!totals.count && <p className="note drag-hint">Appui long sur une séance pour la déplacer.</p>}
+
+      <div className={`days${drag ? " dragging" : ""}`}>
         {days.map((d) => {
           const list = (sessions ?? []).filter((s) => s.date === d);
+          const dayRuns = runs.runs.filter((r) => r.date === d);
+          // Runs are matched to the day's sessions in order; extra runs are "free" runs.
+          const extra = dayRuns.slice(list.length);
+          const past = d < today();
           return (
-            <section key={d} className={`day${d === today() ? " today" : ""}`} aria-label={d}>
+            <section
+              key={d}
+              data-day={d}
+              className={`day${d === today() ? " today" : ""}${drag?.overDay === d && drag.fromDay !== d ? " drop" : ""}`}
+              aria-label={d}
+            >
               <div className="day-spine num">
                 <small>{weekdayShort(d)}</small>
                 <strong>{dayNumber(d)}</strong>
               </div>
               <div className="day-body">
                 {sessions === null && <div className="day-empty">…</div>}
-                {sessions !== null && !list.length && (
+                {sessions !== null && !list.length && !dayRuns.length && (
                   <Link className="day-empty" to={`/nouvelle/${d}`}>
-                    Repos. Ajouter une séance
+                    {drag ? "Déposer ici" : "Repos. Ajouter une séance"}
                   </Link>
                 )}
-                {list.map((s) => {
+                {list.map((s, i) => {
                   const isBusy = busy.has(s.id);
+                  const run = dayRuns[i];
+                  const isDragged = drag?.id === s.id;
                   return (
-                    <article key={s.id} className="card">
+                    <article
+                      key={s.id}
+                      className={`card${isDragged ? " lifted" : ""}${run ? " is-done" : ""}`}
+                      style={isDragged ? { transform: `translateY(${drag!.dy}px)` } : undefined}
+                      {...bind(s.id, s.date)}
+                    >
                       <div className="card-top">
-                        <Link className="card-title" to={`/seance/${s.id}`}>
+                        <Link className="card-title" to={`/seance/${s.id}`} draggable={false}>
                           <strong>{s.title}</strong>
                           <span className="num">{sessionSummary(profile, s.blocks)}</span>
                         </Link>
@@ -158,9 +209,25 @@ export function Week() {
                         </button>
                       </div>
                       <ProfileBar profile={profile} blocks={s.blocks} />
+                      {run ? (
+                        <p className="card-status done num">
+                          <IconCheck /> Faite : {runText(run)}
+                          {run.avgHr ? `, ${run.avgHr} bpm` : ""}
+                        </p>
+                      ) : past && runs.hasActivities ? (
+                        <p className="card-status missed">Non faite</p>
+                      ) : null}
                     </article>
                   );
                 })}
+                {extra.map((r) => (
+                  <div key={r.id} className="free-run num">
+                    <IconCheck />
+                    <span>
+                      <strong>{r.name}</strong> {runText(r)}
+                    </span>
+                  </div>
+                ))}
               </div>
             </section>
           );

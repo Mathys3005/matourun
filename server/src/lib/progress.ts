@@ -172,6 +172,46 @@ export async function lastSyncAt(userId: string): Promise<Date | null> {
   return rows[0]?.synced ?? null;
 }
 
+/** Runs between two dates, for the week view ("done / not done"). */
+export async function listRuns(userId: string, from: string, to: string) {
+  const { rows } = await q<{
+    id: string;
+    date: string;
+    name: string;
+    distance_m: number;
+    duration_s: number;
+    moving_s: number | null;
+    avg_hr: number | null;
+  }>(
+    `SELECT garmin_id::text AS id, to_char(start_local, 'YYYY-MM-DD') AS date, name,
+            distance_m, duration_s, moving_s, avg_hr
+       FROM activities
+      WHERE user_id = $1 AND start_local >= $2::date AND start_local < ($3::date + 1)
+      ORDER BY start_local`,
+    [userId, from, to],
+  );
+  const { rows: has } = await q<{ has: boolean }>(
+    `SELECT EXISTS (SELECT 1 FROM activities WHERE user_id = $1) AS has`,
+    [userId],
+  );
+  return {
+    runs: rows.map((r) => {
+      const km = r.distance_m / 1000;
+      const moving = r.moving_s && r.moving_s > 0 ? r.moving_s : r.duration_s;
+      return {
+        id: r.id,
+        date: r.date,
+        name: r.name || "Course",
+        km: Math.round(km * 10) / 10,
+        durationSec: Math.round(r.duration_s),
+        paceSec: km > 0.2 ? Math.round(moving / km) : null,
+        avgHr: r.avg_hr ? Math.round(r.avg_hr) : null,
+      };
+    }),
+    hasActivities: has[0]?.has ?? false,
+  };
+}
+
 /* ---------- Statistics ---------- */
 
 interface Run {
@@ -329,7 +369,46 @@ export async function computeProgress(
     sync: { canSync: sync.canSync, lastSyncAt: synced?.toISOString() ?? null, hasActivities: any[0]?.has ?? false },
     zones: zones.zones,
     lapsPending: zones.lapsPending,
+    alerts: loadAlerts(table, zones.zones),
   };
+}
+
+/* ---------- Load alerts ---------- */
+
+const VOLUME_JUMP = 0.15;
+
+/** Volume jump vs the 3 previous weeks, and easy-run heart rate drifting up (possible fatigue). */
+export function loadAlerts(weeks: ProgressWeek[], zones: ProgressZone[]): Progress["alerts"] {
+  const alerts: Progress["alerts"] = [];
+  const cur = weeks.at(-1);
+  const prev = weeks.slice(-4, -1).filter((w) => w.doneKm > 0);
+  if (cur && prev.length >= 2) {
+    const base = prev.reduce((s, w) => s + w.doneKm, 0) / prev.length;
+    const planned = Math.max(cur.doneKm, cur.plannedKm);
+    const jump = base > 0 ? (planned - base) / base : 0;
+    if (jump > VOLUME_JUMP && planned - base >= 5) {
+      alerts.push({
+        kind: "volume",
+        title: `Volume en hausse de ${Math.round(jump * 100)} % cette semaine`,
+        detail: `${Math.round(planned)} km ${cur.plannedKm >= cur.doneKm ? "prévus" : "faits"} contre ${Math.round(base)} km en moyenne sur les semaines précédentes. Au-delà de 10 à 15 %, le risque de blessure augmente.`,
+      });
+    }
+  }
+  const footing = zones.find((z) => z.key === "footing");
+  const pts = (footing?.weeks ?? []).flatMap((w) =>
+    w.hr !== null && w.paceSec !== null ? [{ hr: w.hr, paceSec: w.paceSec }] : [],
+  );
+  const [a, b, c] = pts.slice(-3);
+  if (a && b && c) {
+    if (b.hr - a.hr >= 1 && c.hr - b.hr >= 1 && c.hr - a.hr >= 3 && c.paceSec >= a.paceSec - 5) {
+      alerts.push({
+        kind: "fatigue",
+        title: "FC des footings en hausse depuis 3 semaines",
+        detail: `De ${a.hr} à ${c.hr} bpm à allure égale ou plus lente. Signe possible de fatigue : pense à la récupération et au sommeil.`,
+      });
+    }
+  }
+  return alerts;
 }
 
 /* ---------- Evolution per pace zone ---------- */

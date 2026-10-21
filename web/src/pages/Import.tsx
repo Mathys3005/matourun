@@ -25,6 +25,8 @@ async function shrink(file: File): Promise<Blob> {
 export function Import() {
   const { profile, toast } = useApp();
   const navigate = useNavigate();
+  const [mode, setMode] = useState<"image" | "text">("image");
+  const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(nextMonday());
@@ -41,12 +43,14 @@ export function Import() {
   }, [file]);
 
   async function read() {
-    if (!file) return;
+    if (mode === "image" ? !file : text.trim().length < 10) return;
     setBusy(true);
     setError("");
     try {
-      const img = await shrink(file);
-      const { sessions } = await api.parseImport(img, startDate, group);
+      const { sessions } =
+        mode === "image"
+          ? await api.parseImport(await shrink(file!), startDate, group)
+          : await api.parseImportText(text, startDate, group);
       setDrafts(sessions);
     } catch (e) {
       setError((e as Error).message);
@@ -76,10 +80,19 @@ export function Import() {
   return (
     <>
       <h1>Importer le plan</h1>
-      <p className="lede">Envoie la capture du message du club, MatouRun le transforme en séances.</p>
+      <p className="lede">Envoie la capture ou colle le message du club, MatouRun le transforme en séances.</p>
 
       {!drafts && (
         <div style={{ marginTop: 22 }}>
+          <div className="segmented" role="radiogroup" aria-label="Source du plan">
+            <button role="radio" aria-checked={mode === "image"} className={mode === "image" ? "on" : undefined} onClick={() => setMode("image")}>
+              Capture
+            </button>
+            <button role="radio" aria-checked={mode === "text"} className={mode === "text" ? "on" : undefined} onClick={() => setMode("text")}>
+              Texte
+            </button>
+          </div>
+          {mode === "image" ? (
           <label className="drop">
             <input
               type="file"
@@ -96,6 +109,22 @@ export function Import() {
               PNG, JPEG ou WebP
             </span>
           </label>
+          ) : (
+            <label className="field">
+              <span>Message du club</span>
+              <textarea
+                className="input plan-text"
+                rows={9}
+                maxLength={4000}
+                placeholder={"Adultes :\n- 30' puis 6 x 40 - 20 + 6 x 30 - 30…"}
+                value={text}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  setError("");
+                }}
+              />
+            </label>
+          )}
 
           <div className="grid2" style={{ marginTop: 16 }}>
             <label className="field">
@@ -109,13 +138,13 @@ export function Import() {
           </div>
 
           {error && <p className="error" role="alert">{error}</p>}
-          <button className="btn block" disabled={!file || busy} onClick={read}>
+          <button className="btn block" disabled={(mode === "image" ? !file : text.trim().length < 10) || busy} onClick={read}>
             {busy ? (
               <>
-                <span className="spinner" /> Lecture de la capture…
+                <span className="spinner" /> Lecture du plan…
               </>
             ) : (
-              "Lire la capture"
+              mode === "image" ? "Lire la capture" : "Lire le message"
             )}
           </button>
         </div>

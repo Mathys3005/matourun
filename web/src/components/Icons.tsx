@@ -78,3 +78,9 @@ export const IconChart = () => (
     <path d="M4 20h16M7 16v-5M12 16V7M17 16v-8" />
   </svg>
 );
+export const IconAlert = () => (
+  <svg {...base}>
+    <path d="M12 3l9.5 17h-19L12 3z" />
+    <path d="M12 10v4.5M12 17.5v.5" />
+  </svg>
+);
