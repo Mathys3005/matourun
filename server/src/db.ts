@@ -78,6 +78,24 @@ const MIGRATIONS: string[] = [
   `UPDATE users SET role = 'admin'
     WHERE password_hash IS NOT NULL
       AND NOT EXISTS (SELECT 1 FROM users WHERE role = 'admin')`,
+  // Running activities synced from Garmin, for the Progression tab.
+  `CREATE TABLE IF NOT EXISTS activities (
+     user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+     garmin_id bigint NOT NULL,
+     name text NOT NULL DEFAULT '',
+     type_key text NOT NULL,
+     start_local timestamp NOT NULL,
+     distance_m real NOT NULL,
+     duration_s real NOT NULL,
+     moving_s real,
+     avg_hr real,
+     max_hr real,
+     elevation_m real,
+     cadence real,
+     PRIMARY KEY (user_id, garmin_id)
+   )`,
+  `CREATE INDEX IF NOT EXISTS activities_user_start_idx ON activities(user_id, start_local)`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS garmin_synced_at timestamptz`,
   `CREATE TABLE IF NOT EXISTS app_secrets (
      key text PRIMARY KEY,
      value text NOT NULL,

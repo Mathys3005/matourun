@@ -255,6 +255,12 @@ export async function scheduleWorkout(workoutId: string, date: string): Promise<
   return r?.workoutScheduleId ? String(r.workoutScheduleId) : null;
 }
 
+/** One page of the Garmin activity list, newest first (raw, untrusted). */
+export async function listActivities(start: number, limit: number): Promise<unknown> {
+  const qs = new URLSearchParams({ start: String(start), limit: String(limit) });
+  return withGarmin((g) => g.get<unknown>(`${API}/activitylist-service/activities/search/activities?${qs}`));
+}
+
 /** Deleting the workout also removes it from the Garmin calendar. */
 export async function deleteWorkout(workoutId: string): Promise<void> {
   if (!/^\d+$/.test(workoutId)) return;

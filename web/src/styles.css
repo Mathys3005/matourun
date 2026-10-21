@@ -1,4 +1,13 @@
 :root {
+  /* Chart tokens (validated on the dark surface: CVD ΔE ≥ 8, contrast ≥ 3:1). */
+  --viz-done: #8a6cf0;
+  --viz-plan: #24a6b8;
+  --viz-seq-0: #2c1d45;
+  --viz-seq-1: #3f2d6b;
+  --viz-seq-2: #5b4890;
+  --viz-seq-3: #8a6cf0;
+  --viz-seq-4: #b9a7f7;
+  --viz-seq-5: #e6defc;
   --night: #160e24;
   --plum: #211533;
   --plum-2: #2c1d45;
@@ -224,6 +233,89 @@ select.input { appearance: none; padding-right: 32px; background-image: linear-g
 .drop img { max-width: 100%; max-height: 260px; border-radius: var(--radius-sm); }
 .drop input { display: none; }
 .drop strong { color: var(--text); }
+
+/* ---------- Progression ---------- */
+
+.refetching .viz-card, .refetching .hero-week { opacity: 0.55; transition: opacity 0.2s; }
+.segmented { display: flex; gap: 4px; padding: 4px; margin: 16px 0 14px; background: var(--plum); border-radius: 999px; }
+.segmented button {
+  flex: 1; border: 0; background: transparent; color: var(--muted); font-weight: 600; font-size: 14px;
+  padding: 9px 6px; border-radius: 999px;
+}
+.segmented button.on { background: var(--white); color: var(--night); }
+.sync-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+.sync-row .btn svg { width: 16px; height: 16px; }
+.sync-row .btn.busy svg { animation: spin 0.9s linear infinite; }
+
+.hero-week { padding: 6px 0 22px; }
+.hero-label { font-size: 14px; color: var(--muted); font-weight: 600; }
+.hero-figure { display: flex; align-items: baseline; gap: 8px; margin: 2px 0 0; }
+.hero-figure strong { font: 600 72px/0.95 var(--display); letter-spacing: -0.01em; }
+.hero-figure span { font: 600 26px/1 var(--display); color: var(--lilac); }
+.hero-week .note { margin: 6px 0 10px; }
+.meter { height: 8px; border-radius: 999px; background: var(--dusk); overflow: hidden; }
+.meter i { display: block; height: 100%; border-radius: 999px; background: var(--viz-done); }
+.hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 18px; }
+.hero-stats strong { display: block; font: 600 22px/1.1 var(--display); }
+.hero-stats span, .run-stats span { font-size: 12px; color: var(--muted); }
+
+.viz-card { background: var(--plum); border-radius: var(--radius-lg); padding: 16px 14px 10px; margin-bottom: 14px; }
+.viz-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
+.viz-head h2 { margin: 0; font-size: 22px; }
+.viz-legend { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--muted); }
+.viz-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.viz-legend .key-rect { width: 10px; height: 10px; border-radius: 3px; background: var(--viz-done); }
+.viz-legend .key-line { width: 14px; height: 2px; border-radius: 2px; background: var(--viz-plan); }
+.viz-legend.seq { gap: 3px; }
+.viz-legend.seq i { width: 10px; height: 10px; border-radius: 2px; }
+.viz-legend.seq span:first-child { margin-right: 3px; }
+.viz-legend.seq span:last-child { margin-left: 3px; }
+.viz-note { font-size: 12px; color: var(--muted); }
+.viz-readout { margin: 8px 0 6px; font-size: 14px; color: var(--muted); min-height: 21px; }
+.viz-readout strong { color: var(--text); font-size: 16px; }
+.viz-when { white-space: nowrap; }
+.viz { display: block; width: 100%; height: auto; touch-action: pan-y; cursor: crosshair; }
+.viz:focus-visible { outline: 2px solid var(--white); outline-offset: 4px; border-radius: 8px; }
+.viz-grid { stroke: rgba(255, 255, 255, 0.08); stroke-width: 1; shape-rendering: crispEdges; }
+.viz-tick { fill: var(--muted); font: 500 10px var(--body); font-variant-numeric: tabular-nums; }
+.viz-band { fill: rgba(255, 255, 255, 0.05); }
+.viz-done { fill: var(--viz-done); }
+.viz-sel .viz-done { fill: #a78ff5; }
+.viz-plan { stroke: var(--viz-plan); stroke-width: 2.5; stroke-linecap: round; }
+.viz-line { fill: none; stroke: var(--viz-done); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.viz-dot { fill: var(--viz-done); stroke: var(--plum); stroke-width: 2; }
+.viz-dot.on { fill: var(--white); }
+.viz-crosshair { stroke: rgba(255, 255, 255, 0.25); stroke-width: 1; }
+.seq-0 { fill: var(--viz-seq-0); background: var(--viz-seq-0); }
+.seq-1 { fill: var(--viz-seq-1); background: var(--viz-seq-1); }
+.seq-2 { fill: var(--viz-seq-2); background: var(--viz-seq-2); }
+.seq-3 { fill: var(--viz-seq-3); background: var(--viz-seq-3); }
+.seq-4 { fill: var(--viz-seq-4); background: var(--viz-seq-4); }
+.seq-5 { fill: var(--viz-seq-5); background: var(--viz-seq-5); }
+rect.on { stroke: var(--white); stroke-width: 1.5; }
+
+.records { margin: 26px 0 8px; }
+.record-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.record { background: var(--plum); border-radius: var(--radius-md); padding: 14px; display: grid; gap: 2px; align-content: start; }
+.record span { font-size: 13px; color: var(--muted); }
+.record strong { font: 600 26px/1.1 var(--display); }
+.record small { font-size: 12px; color: var(--muted); }
+
+.runs { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 10px; }
+.run { background: var(--plum); border-radius: var(--radius-md); padding: 14px; display: grid; gap: 10px; }
+.run-head { display: grid; gap: 2px; }
+.run-head strong { font-size: 16px; overflow-wrap: anywhere; }
+.run-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.run-stats strong { display: block; font: 600 20px/1.1 var(--display); }
+.run-plan { margin: 0; font-size: 13px; color: var(--lilac); }
+
+.data-table { margin: 6px 0 10px; }
+.data-table summary { cursor: pointer; color: var(--muted); font-size: 14px; padding: 8px 0; }
+.table-scroll { overflow-x: auto; }
+.data-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.data-table th, .data-table td { text-align: right; padding: 8px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.data-table th:first-child { text-align: left; }
+.data-table thead th { color: var(--muted); font-weight: 600; font-size: 12px; }
 
 /* ---------- Access (admin) ---------- */
 

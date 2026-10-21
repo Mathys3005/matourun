@@ -268,3 +268,56 @@ export function estimate(profile: Profile, blocks: Block[]): { meters: number; s
   }
   return { meters: Math.round(meters), seconds: Math.round(seconds) };
 }
+
+/* ---------- Progression ---------- */
+
+export const PROGRESS_RANGES = [12, 26, 52] as const;
+export const progressQuerySchema = z.object({
+  weeks: z.coerce.number().int().refine((n) => (PROGRESS_RANGES as readonly number[]).includes(n)).default(12),
+});
+
+export const progressWeekSchema = z.object({
+  monday: isoDateSchema,
+  plannedKm: z.number(),
+  plannedSec: z.number(),
+  plannedCount: z.number().int(),
+  doneKm: z.number(),
+  doneSec: z.number(),
+  doneCount: z.number().int(),
+  elevation: z.number(),
+  /** Mean pace of the week's runs (s/km), null without runs. */
+  paceSec: z.number().nullable(),
+});
+export type ProgressWeek = z.infer<typeof progressWeekSchema>;
+
+export const progressActivitySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  date: isoDateSchema,
+  time: z.string(),
+  km: z.number(),
+  durationSec: z.number(),
+  paceSec: z.number().nullable(),
+  avgHr: z.number().nullable(),
+  elevation: z.number().nullable(),
+  plannedTitle: z.string().nullable(),
+});
+export type ProgressActivity = z.infer<typeof progressActivitySchema>;
+
+const recordSchema = z.object({ value: z.number(), date: isoDateSchema }).nullable();
+
+export const progressSchema = z.object({
+  weeks: z.array(progressWeekSchema),
+  days: z.array(z.object({ date: isoDateSchema, km: z.number() })),
+  activities: z.array(progressActivitySchema),
+  records: z.object({
+    longestKm: recordSchema,
+    bestPaceSec: recordSchema,
+    biggestWeekKm: recordSchema,
+    streakWeeks: z.number().int(),
+  }),
+  sync: z.object({ canSync: z.boolean(), lastSyncAt: z.string().nullable(), hasActivities: z.boolean() }),
+});
+export type Progress = z.infer<typeof progressSchema>;
+
+export const syncResultSchema = z.object({ added: z.number().int(), total: z.number().int(), lastSyncAt: z.string() });

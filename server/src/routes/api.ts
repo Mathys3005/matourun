@@ -16,6 +16,7 @@ import { parsePlanImage, sniffImage } from "../lib/parsePlan.js";
 import { buildGarminWorkout } from "../lib/garminWorkout.js";
 import * as garmin from "../lib/garminClient.js";
 import { adminRouter } from "./admin.js";
+import { progressRouter } from "./progress.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -40,6 +41,7 @@ function checkRange(from: string, to: string) {
 export const apiRouter = Router();
 apiRouter.use(requireAuth);
 apiRouter.use("/admin", adminRouter);
+apiRouter.use("/progress", progressRouter);
 
 apiRouter.get("/config", (_req, res) => {
   res.json({ garmin: garmin.garminConfigured() });

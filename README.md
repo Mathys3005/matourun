@@ -4,7 +4,8 @@ Calendrier d'entraînement de course à pied, pensé pour le téléphone :
 
 - tu envoies la capture du plan du club et la date de la première séance, MatouRun la transforme en séances structurées ;
 - tu vois ta semaine comme un calendrier, chaque séance dessinée en profil d'effort ;
-- un bouton par séance (et un pour toute la semaine) l'envoie dans ton calendrier Garmin Connect, avec des cibles calculées à partir de tes allures 5 km, 10 km, semi et marathon.
+- un bouton par séance (et un pour toute la semaine) l'envoie dans ton calendrier Garmin Connect, avec des cibles calculées à partir de tes allures 5 km, 10 km, semi et marathon ;
+- l'onglet **Progrès** compare le volume prévu et réalisé semaine par semaine, avec l'allure moyenne, une grille de régularité, les records de la période et les dernières sorties. Les sorties viennent de Garmin (courses uniquement, importées sur le compte administrateur : synchro automatique toutes les 3 h à l'ouverture de l'onglet, ou bouton *Synchroniser*).
 
 ## Déploiement (Render + Neon, gratuit)
 

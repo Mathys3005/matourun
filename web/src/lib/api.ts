@@ -8,6 +8,8 @@ import {
   roleSchema,
   adminUserSchema,
   inviteSchema,
+  progressSchema,
+  syncResultSchema,
   type Role,
   type Profile,
   type Session,
@@ -171,6 +173,9 @@ export const api = {
       json("POST"),
       z.object({ id: z.string(), workoutId: z.string(), date: z.string() }),
     ),
+  progress: (weeks: number) =>
+    request(`/progress?${new URLSearchParams({ weeks: String(weeks) })}`, { method: "GET" }, progressSchema),
+  syncProgress: () => request("/progress/sync", json("POST"), syncResultSchema),
   users: () => request("/admin/users", { method: "GET" }, z.array(adminUserSchema)),
   inviteUser: (email: string, role: Role) =>
     request("/admin/users", json("POST", { email, role }), inviteSchema),
