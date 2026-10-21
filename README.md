@@ -14,19 +14,25 @@ Calendrier d'entraînement de course à pied, pensé pour le téléphone :
    - `DATABASE_URL` : la chaîne Neon ;
    - `SETUP_CODE` : un code que tu inventes, qui sert uniquement à créer le tout premier compte (administrateur) ;
    - `GEMINI_API_KEY` ;
-   - `GARMIN_EMAIL` / `GARMIN_PASSWORD` : ton compte Garmin Connect.
+   - `GARMIN_TOKENS` : le jeton Garmin généré sur ton ordinateur (voir ci-dessous).
 4. Ouvre l'adresse `https://matourun-xxxx.onrender.com` sur ton téléphone, entre ton e-mail, le `SETUP_CODE` et ton mot de passe : ce premier compte est administrateur. Invite ensuite les autres depuis *Profil → Qui a accès*. Ajoute-la à l'écran d'accueil (Partager → Sur l'écran d'accueil).
 
 Sur l'offre gratuite, le serveur s'endort après 15 min sans visite : la première ouverture prend environ 30 secondes.
 
 ## Garmin
 
-L'export passe par l'API web de Garmin Connect (non officielle, via `garmin-connect`). Les jetons Garmin sont conservés chiffrés (AES-256-GCM) en base pour éviter de se reconnecter à chaque réveil. Limites connues :
+Garmin bloque les connexions par mot de passe qui viennent des hébergeurs (adresse Render partagée, erreurs 429 / Cloudflare 1015). La connexion se fait donc **une fois depuis ton ordinateur** :
 
-- un compte Garmin avec **double authentification** ne peut pas se connecter ;
-- si Garmin change son API, l'export peut cesser de fonctionner jusqu'à une mise à jour du paquet.
+```bash
+mkdir garmin-token && cd garmin-token
+npm install garmin-connect@1.6.2
+# copie scripts/garmin-token.mjs dans ce dossier, puis :
+node garmin-token.mjs
+```
 
-Une fois envoyée, la séance apparaît dans le calendrier Garmin Connect au bon jour ; la montre la récupère à la synchronisation suivante.
+Le script demande ton e-mail et ton mot de passe Garmin (le mot de passe n'est envoyé qu'à Garmin, jamais affiché ni enregistré) et affiche un jeton. Colle-le dans la variable `GARMIN_TOKENS` sur Render. Le jeton est valable environ un an ; le serveur renouvelle seul l'accès à court terme et garde la copie à jour chiffrée (AES-256-GCM) en base. Quand il expire, l'appli le dit : relance le script.
+
+`GARMIN_EMAIL` / `GARMIN_PASSWORD` restent possibles en secours, mais le serveur ne tente alors qu'une connexion à la fois, suivie d'un délai d'attente d'une heure en cas de refus, pour ne pas aggraver le blocage. Limites : l'export passe par l'API web de Garmin Connect (non officielle, via `garmin-connect`) et peut cesser de fonctionner si Garmin la change. Les séances de tous les utilisateurs partent sur ce même compte Garmin.
 
 ## Sécurité
 

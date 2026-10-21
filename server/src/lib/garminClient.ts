@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { z } from "zod";
 import gcPkg from "garmin-connect";
 import { env } from "../env.js";
 import { q } from "../db.js";
@@ -114,35 +115,88 @@ async function saveTokens(gc: GC) {
   );
 }
 
+const tokensSchema = z.object({
+  oauth1: z.object({ oauth_token: z.string().min(1), oauth_token_secret: z.string().min(1) }).passthrough(),
+  oauth2: z.object({ access_token: z.string().min(1), expires_at: z.number() }).passthrough(),
+});
+type Tokens = z.infer<typeof tokensSchema>;
+
+/** GARMIN_TOKENS: base64url JSON printed by scripts/garmin-token.mjs. */
+function envTokens(): Tokens | null {
+  const raw = env().GARMIN_TOKENS?.trim();
+  if (!raw) return null;
+  try {
+    const parsed = tokensSchema.safeParse(JSON.parse(Buffer.from(raw, "base64url").toString("utf8")));
+    if (parsed.success) return parsed.data;
+  } catch {
+    // fall through
+  }
+  console.error("[garmin] GARMIN_TOKENS is not a valid token");
+  return null;
+}
+
+const ENV_FP_KEY = "garmin_env_tokens_fp";
+const fingerprint = (s: string) => crypto.createHash("sha256").update(s.trim()).digest("hex");
+
+async function readSecret(key: string): Promise<string | null> {
+  const { rows } = await q<{ value: string }>(`SELECT value FROM app_secrets WHERE key = $1`, [key]);
+  return rows[0]?.value ?? null;
+}
+
+async function writeSecret(key: string, value: string) {
+  await q(
+    `INSERT INTO app_secrets (key, value, updated_at) VALUES ($1, $2, now())
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+    [key, value],
+  );
+}
+
+async function storedTokens(): Promise<Tokens | null> {
+  const blob = await readSecret(TOKEN_KEY);
+  if (!blob) return null;
+  try {
+    const parsed = tokensSchema.safeParse(JSON.parse(decrypt(blob)));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
 async function connect(): Promise<GC> {
   const e = env();
-  if (!e.GARMIN_EMAIL || !e.GARMIN_PASSWORD) {
-    throw new HttpError(503, "Identifiants Garmin non configurés sur le serveur");
+  const fromEnv = envTokens();
+  const canLogin = Boolean(e.GARMIN_EMAIL && e.GARMIN_PASSWORD);
+  if (!fromEnv && !canLogin) {
+    throw new HttpError(503, "Garmin n'est pas configuré sur le serveur (GARMIN_TOKENS)");
   }
-  const gc = new GarminConnect({ username: e.GARMIN_EMAIL, password: e.GARMIN_PASSWORD });
+  const gc = new GarminConnect({ username: e.GARMIN_EMAIL ?? "", password: e.GARMIN_PASSWORD ?? "" });
 
-  // Saved tokens first: a valid token means no sign-in at all.
-  const { rows } = await q<{ value: string }>(`SELECT value FROM app_secrets WHERE key = $1`, [TOKEN_KEY]);
-  if (rows[0]) {
-    let tokens: { oauth1: unknown; oauth2: unknown } | null = null;
+  // A newly pasted GARMIN_TOKENS wins; otherwise the refreshed copy kept in the database.
+  let tokens: Tokens | null = null;
+  let envFp: string | null = null;
+  if (fromEnv) {
+    envFp = fingerprint(e.GARMIN_TOKENS!);
+    if (envFp !== (await readSecret(ENV_FP_KEY))) tokens = fromEnv;
+  }
+  tokens ??= (await storedTokens()) ?? fromEnv;
+
+  if (tokens) {
     try {
-      tokens = JSON.parse(decrypt(rows[0].value));
-    } catch {
-      tokens = null;
-    }
-    if (tokens) {
-      try {
-        gc.loadToken(tokens.oauth1, tokens.oauth2);
-        await gc.get(`${API}/userprofile-service/socialProfile`);
-        await saveTokens(gc); // keeps a refreshed access token
-        return gc;
-      } catch (err) {
-        const status = statusOf(err);
-        // Only a rejected token justifies signing in again; anything else (429, network) is temporary.
-        if (status !== 401 && status !== 403) {
-          console.error("[garmin] token check failed", { status });
-          throw new HttpError(status === 429 ? 429 : 502, "Garmin est momentanément indisponible, réessaie plus tard.");
-        }
+      gc.loadToken(tokens.oauth1, tokens.oauth2);
+      await gc.get(`${API}/userprofile-service/socialProfile`);
+      await saveTokens(gc); // keeps the refreshed access token
+      if (envFp) await writeSecret(ENV_FP_KEY, envFp);
+      return gc;
+    } catch (err) {
+      const status = statusOf(err);
+      // Only a rejected token justifies signing in again; anything else (429, network) is temporary.
+      if (status !== 401 && status !== 403) {
+        console.error("[garmin] token check failed", { status });
+        throw new HttpError(status === 429 ? 429 : 502, "Garmin est momentanément indisponible, réessaie plus tard.");
+      }
+      await q(`DELETE FROM app_secrets WHERE key = $1`, [TOKEN_KEY]);
+      if (!canLogin) {
+        throw new HttpError(503, "Le jeton Garmin a expiré : génère-en un nouveau (GARMIN_TOKENS).");
       }
     }
   }
@@ -209,4 +263,5 @@ export async function deleteWorkout(workoutId: string): Promise<void> {
   );
 }
 
-export const garminConfigured = () => Boolean(env().GARMIN_EMAIL && env().GARMIN_PASSWORD);
+export const garminConfigured = () =>
+  Boolean(env().GARMIN_TOKENS?.trim() || (env().GARMIN_EMAIL && env().GARMIN_PASSWORD));

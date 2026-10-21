@@ -24,8 +24,7 @@ services:
       # Reads the club screenshots (free key from aistudio.google.com).
       - key: GEMINI_API_KEY
         sync: false
-      # Garmin Connect account the workouts are sent to.
-      - key: GARMIN_EMAIL
-        sync: false
-      - key: GARMIN_PASSWORD
+      # Garmin token generated on your computer: node scripts/garmin-token.mjs
+      # (Garmin blocks password sign-ins coming from Render's servers).
+      - key: GARMIN_TOKENS
         sync: false

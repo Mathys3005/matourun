@@ -16,6 +16,8 @@ const envSchema = z.object({
   GEMINI_MODEL: z.string().default("gemini-flash-latest"),
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default("claude-sonnet-5-5"),
+  /** Garmin tokens generated on a personal computer (scripts/garmin-token.mjs). Preferred over a password login. */
+  GARMIN_TOKENS: z.string().optional(),
   GARMIN_EMAIL: z.string().optional(),
   GARMIN_PASSWORD: z.string().optional(),
   TRUST_PROXY: z.coerce.number().int().min(0).default(1),
